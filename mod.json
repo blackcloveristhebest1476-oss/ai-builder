@@ -1,0 +1,73 @@
+{
+	"geode": "5.11.2",
+	"gd": {
+		"win": "2.2081",
+		"android": "2.2081",
+		"mac": "2.2081",
+		"ios": "2.2081"
+	},
+	"id": "alexl.ai-builder",
+	"name": "AI Builder",
+	"version": "v1.0.0",
+	"developer": "alexl",
+	"description": "Select a structure, describe a design, and AI builds it in the editor.",
+	"tags": ["editor", "utility"],
+	"dependencies": {
+		"geode.node-ids": ">=v1.23.3"
+	},
+	"settings": {
+		"provider": {
+			"type": "string",
+			"name": "AI Provider",
+			"description": "<cy>Anthropic (Claude)</c> uses api.anthropic.com.\n<cy>OpenAI-compatible</c> works with OpenAI, OpenRouter, Groq, Gemini's OpenAI endpoint, or a local Ollama / LM Studio server (set the Base URL below).",
+			"default": "Anthropic (Claude)",
+			"one-of": ["Anthropic (Claude)", "OpenAI-compatible"]
+		},
+		"api-key": {
+			"type": "string",
+			"name": "API Key",
+			"description": "Your API key for the selected provider. Stored locally in your Geode save folder. Leave empty for local servers like Ollama.",
+			"default": ""
+		},
+		"model": {
+			"type": "string",
+			"name": "Model",
+			"description": "Model name. Examples: <cg>claude-sonnet-5-5</c>, <cg>claude-opus-5-5</c>, <cg>claude-haiku-5-5</c> (Anthropic), <cg>gpt-4.1</c> (OpenAI), <cg>qwen2.5-coder:14b</c> (Ollama).",
+			"default": "claude-sonnet-5-5"
+		},
+		"base-url": {
+			"type": "string",
+			"name": "Base URL (OpenAI-compatible only)",
+			"description": "Endpoint root, without /chat/completions. OpenAI: https://api.openai.com/v1 - OpenRouter: https://openrouter.ai/api/v1 - Ollama: http://localhost:11434/v1",
+			"default": "https://api.openai.com/v1"
+		},
+		"max-objects": {
+			"type": "int",
+			"name": "Max Objects Per Build",
+			"description": "Hard cap on how many objects one generation can place.",
+			"default": 600,
+			"min": 10,
+			"max": 4000
+		},
+		"max-tokens": {
+			"type": "int",
+			"name": "Max Output Tokens",
+			"description": "Upper limit on the AI's response length. Bigger designs need more tokens (roughly 12 tokens per object).",
+			"default": 12000,
+			"min": 1000,
+			"max": 21000
+		},
+		"apply-colors": {
+			"type": "bool",
+			"name": "Apply Color Channels",
+			"description": "Let the AI set the colors of color channels it uses (e.g. for pixel art). Turn off to keep your level's existing colors.",
+			"default": true
+		},
+		"strict-ids": {
+			"type": "bool",
+			"name": "Only Known Object IDs",
+			"description": "Only place object IDs from the built-in palette or from your selected structure. Turning this off lets the AI use any ID, which can produce wrong objects.",
+			"default": true
+		}
+	}
+}
