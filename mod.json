@@ -8,10 +8,13 @@
 	},
 	"id": "alexl.ai-builder",
 	"name": "AI Builder",
-	"version": "v1.0.0",
+	"version": "v1.0.1",
 	"developer": "alexl",
 	"description": "Select a structure, describe a design, and AI builds it in the editor.",
-	"tags": ["editor", "utility"],
+	"tags": [
+		"editor",
+		"utility"
+	],
 	"dependencies": {
 		"geode.node-ids": ">=v1.23.3"
 	},
@@ -21,25 +24,31 @@
 			"name": "AI Provider",
 			"description": "<cy>Anthropic (Claude)</c> uses api.anthropic.com.\n<cy>OpenAI-compatible</c> works with OpenAI, OpenRouter, Groq, Gemini's OpenAI endpoint, or a local Ollama / LM Studio server (set the Base URL below).",
 			"default": "Anthropic (Claude)",
-			"one-of": ["Anthropic (Claude)", "OpenAI-compatible"]
+			"one-of": [
+				"Anthropic (Claude)",
+				"OpenAI-compatible"
+			]
 		},
 		"api-key": {
 			"type": "string",
 			"name": "API Key",
 			"description": "Your API key for the selected provider. Stored locally in your Geode save folder. Leave empty for local servers like Ollama.",
-			"default": ""
+			"default": "",
+			"filter": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/._-~?&=%+#@!$*(),;[]{}|^ "
 		},
 		"model": {
 			"type": "string",
 			"name": "Model",
 			"description": "Model name. Examples: <cg>claude-sonnet-5-5</c>, <cg>claude-opus-5-5</c>, <cg>claude-haiku-5-5</c> (Anthropic), <cg>gpt-4.1</c> (OpenAI), <cg>qwen2.5-coder:14b</c> (Ollama).",
-			"default": "claude-sonnet-5-5"
+			"default": "claude-sonnet-5-5",
+			"filter": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/._-~?&=%+#@!$*(),;[]{}|^ "
 		},
 		"base-url": {
 			"type": "string",
 			"name": "Base URL (OpenAI-compatible only)",
 			"description": "Endpoint root, without /chat/completions. OpenAI: https://api.openai.com/v1 - OpenRouter: https://openrouter.ai/api/v1 - Ollama: http://localhost:11434/v1",
-			"default": "https://api.openai.com/v1"
+			"default": "https://api.openai.com/v1",
+			"filter": "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789:/._-~?&=%+#@!$*(),;[]{}|^ "
 		},
 		"max-objects": {
 			"type": "int",
