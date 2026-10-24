@@ -31,12 +31,6 @@ protected:
     cocos2d::CCSize m_size;
 };
 
-class DashboardTab;
-class InputsTab;
-class GraphsTab;
-class PrecisionTab;
-class SettingsTab;
-
 class AnalyzerPopup : public geode::Popup {
 public:
     enum TabId { Dashboard = 0, Inputs, Graphs, Precision, SettingsTabId, TabCount };

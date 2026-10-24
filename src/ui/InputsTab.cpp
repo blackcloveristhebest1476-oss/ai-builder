@@ -4,6 +4,8 @@
 #include <Geode/binding/FLAlertLayer.hpp>
 
 #include <algorithm>
+#include <cctype>
+#include <iterator>
 #include <cmath>
 #include <limits>
 

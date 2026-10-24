@@ -455,7 +455,7 @@ std::vector<size_t> MeasureSetupPopup::selectedTargets(std::string* error) const
     auto s = Settings::load();
     auto count = s.count();
     size_t lo = 1, hi = a.inputs.size();
-    auto text = trim(m_range ? m_range->getString() : std::string("all"));
+    auto text = trim(m_range ? std::string(m_range->getString()) : std::string("all"));
     auto lower = toLower(text);
     if (!lower.empty() && lower != "all") {
         auto dash = lower.find('-');
@@ -619,7 +619,7 @@ bool ValuePromptPopup::init(std::string const& title, std::string const& text, s
     menu->setPosition({0.f, 0.f});
     m_mainLayer->addChild(menu);
     auto ok = button("OK", .6f, 0, [this](auto) {
-        auto value = m_input->getString();
+        std::string value = m_input->getString();
         auto cb = m_onOk;
         this->onClose(nullptr);
         if (cb) cb(value);

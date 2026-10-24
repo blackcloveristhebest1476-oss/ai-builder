@@ -246,7 +246,7 @@ protected:
 
         if (m_points.empty()) {
             auto l = label("No frame windows to plot yet.", "chat", .6f, kMuted, {.5f, .5f});
-            l->setPosition(r.origin + r.size / 2);
+            l->setPosition({r.getMidX(), r.getMidY()});
             m_labels->addChild(l);
             if (onInfo) onInfo("");
             return;

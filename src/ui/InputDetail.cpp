@@ -4,6 +4,7 @@
 #include <Geode/binding/FLAlertLayer.hpp>
 #include <Geode/ui/TextArea.hpp>
 
+#include <algorithm>
 #include <cmath>
 
 using namespace geode::prelude;
@@ -122,7 +123,7 @@ bool InputDetailPopup::init(size_t recordIndex) {
     m_manual->setPosition({245.f, 26.f});
     m_mainLayer->addChild(m_manual);
     auto set = button("Set", .42f, 0, [this](auto) {
-        auto text = m_manual->getString();
+        std::string text = m_manual->getString();
         char* end = nullptr;
         double v = std::strtod(text.c_str(), &end);
         if (end == text.c_str() || !std::isfinite(v) || v < 0) {
