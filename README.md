@@ -13,6 +13,7 @@ Requires **Geode v5.11+** on **Geometry Dash 2.2081**. CI builds Windows, macOS 
 | **Import** | GDR2 (binary, current GDReplayFormat), GDR 1 (JSON or MessagePack), NaNDL calculator JSON exports, CSV / plain-text frame-window tables, and this mod's own saved analyses. Format is detected from the file contents, not the extension. |
 | **Measure (Mode A)** | Inside the real level, every selected input is replayed with only that input moved −1, −2, … and +1, +2, … ticks until the player dies. Early frames, late frames, total window, asymmetry and frame-perfect classification per input. |
 | **Precision (Mode B)** | NaNDL's published equations: base model plus Nerve, Fatigue and the experimental CPS modifier, solving for **L\*** (the precision at which the expected completion time equals your target, default 24 h). |
+| **Playback** | Replays the macro in the level at normal speed and drops a ring with the frame window at the player's position on every frame-perfect click (or every tight / every measured click). |
 | **UI** | Dashboard, sortable/searchable input table, per-input graph (hover, click, zoom, drag-to-select region, filters, individual/cumulative views), histogram, precision calculator, settings. |
 | **Export** | Full analysis JSON (re-importable), per-input CSV, and a NaNDL-calculator JSON you can load on nandl.pages.dev to cross-check. Saved analyses go to the mod's save folder; macro files are never modified. |
 
@@ -102,8 +103,9 @@ Copy `alexl.frame-window-analyzer.geode` into `Geometry Dash/geode/mods/` and re
 2. **Import Macro** → pick a `.gdr2` / `.gdr` / `.json` file. The Dashboard shows format, inputs, duration, FPS, metadata and any warnings (**Details**).
 3. **Measure** → choose `all` or a range → **Start**. Watch the HUD; Esc stops.
 4. Inspect the **Inputs** table (click a row for the detail view and a timing strip), **Graphs** and the frame-window counter on the Dashboard.
-5. **Precision** → *Solve L\** (or *Stats for fixed L*), toggle modifiers → **Calculate** (runs in the background).
-6. **Export** JSON / CSV / NaNDL, or **Saves** to save, reload or open the saves folder.
+5. **Playback** → choose *Frame perfect*, *Tight* or *Every measured input* to watch the macro with a ring on each of those clicks (ring color = frame-window range, number = window in frames). Esc stops; deaths and completions are not saved.
+6. **Precision** → *Solve L\** (or *Stats for fixed L*), toggle modifiers → **Calculate** (runs in the background).
+7. **Export** JSON / CSV / NaNDL, or **Saves** to save, reload or open the saves folder.
 
 No macro? **Sample Data** loads clearly-labelled synthetic data. Have frame windows from elsewhere? Import a NaNDL JSON or a CSV (`input,time_s,window_frames`, `-` for ignored).
 
@@ -123,6 +125,7 @@ Everything is in the mod's settings (each has an explanation) and the **Settings
 | Use Lower-Bound Windows | on | Off = treat them as unknown |
 | Frame-Perfect / Tight thresholds | 1 / 2 frames | |
 | Display Ranges | 0,1,2,3,4,5,6,8,10 | Buckets `[edge, next)`, last is open (10+) |
+| Marker Duration | 1.5 s | How long each playback ring stays (0 = until restart) |
 | Max Shift / Horizon / Recheck / Determinism | 24 ticks / 1.5 s / on / on | Measurement |
 | Simulation Time per Frame | 14 ms | Speed vs responsiveness |
 | Color Theme, Automatic Saving, Background Calculation | Rainbow / on / on | |

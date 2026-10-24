@@ -183,6 +183,18 @@
 			"description": "Lower edges of the frame-window ranges shown on the dashboard and histogram, comma separated. Each range includes its lower edge and excludes the next one; the last range is open (e.g. 10+).",
 			"default": "0,1,2,3,4,5,6,8,10"
 		},
+		"title-playback": {
+			"type": "title",
+			"name": "Playback"
+		},
+		"playback-marker-seconds": {
+			"type": "float",
+			"name": "Marker Duration (s)",
+			"description": "How long each ring stays on screen during Playback. 0 keeps every ring until the level restarts.",
+			"default": 1.5,
+			"min": 0.0,
+			"max": 60.0
+		},
 		"title-measurement": {
 			"type": "title",
 			"name": "In-Game Measurement"

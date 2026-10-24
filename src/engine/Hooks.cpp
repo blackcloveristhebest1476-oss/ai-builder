@@ -1,13 +1,15 @@
-// Game hooks used by the measurement engine. Every hook is a pass-through
-// unless a measurement is running on that exact layer.
+// Game hooks used by the measurement engine and the playback engine. Every
+// hook is a pass-through unless one of them is running on that exact layer.
 
 #include "MeasurementEngine.hpp"
+#include "PlaybackEngine.hpp"
 
 #include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
 
 using namespace geode::prelude;
 using fwa::MeasurementEngine;
+using fwa::PlaybackEngine;
 
 class $modify(FWABaseGameLayer, GJBaseGameLayer) {
     static void onModify(auto& self) {
@@ -26,51 +28,65 @@ class $modify(FWABaseGameLayer, GJBaseGameLayer) {
         GJBaseGameLayer::processCommands(dt, isHalfTick, isLastTick);
         auto engine = MeasurementEngine::get();
         if (engine->controls(this)) engine->onProcessCommands(this);
+        auto playback = PlaybackEngine::get();
+        if (playback->controls(this)) playback->onProcessCommands(this);
     }
 
     void handleButton(bool down, int button, bool isPlayer1) {
+        // Only the replayed inputs reach the game during a measurement or playback.
         auto engine = MeasurementEngine::get();
-        // Only the engine's replayed inputs reach the game during a measurement.
         if (engine->controls(this) && !engine->injecting()) return;
+        auto playback = PlaybackEngine::get();
+        if (playback->controls(this) && !playback->injecting()) return;
         GJBaseGameLayer::handleButton(down, button, isPlayer1);
     }
 };
 
 class $modify(FWAPlayLayer, PlayLayer) {
     void destroyPlayer(PlayerObject* player, GameObject* object) {
-        auto engine = MeasurementEngine::get();
         // The anticheat spike is GD's own noclip check at level start; never intercept it.
-        if (engine->controls(this) && object != m_anticheatSpike) {
-            engine->onPlayerDestroyed(this);
-            return; // the engine ends the trial; skip death effects, sounds and progress saving
+        if (object != m_anticheatSpike) {
+            auto engine = MeasurementEngine::get();
+            if (engine->controls(this)) {
+                engine->onPlayerDestroyed(this);
+                return; // the engine ends the trial; skip death effects, sounds and progress saving
+            }
+            auto playback = PlaybackEngine::get();
+            if (playback->controls(this)) {
+                playback->onPlayerDestroyed(this);
+                return; // a bot replay must never save a new best percentage
+            }
         }
         PlayLayer::destroyPlayer(player, object);
     }
 
-    void levelComplete() {
+    bool interceptLevelEnd() {
         auto engine = MeasurementEngine::get();
         if (engine->controls(this)) {
             engine->onLevelEnd(this);
-            return; // a measurement replay never counts as a real completion
+            return true;
         }
+        auto playback = PlaybackEngine::get();
+        if (playback->controls(this)) {
+            playback->onLevelEnd(this);
+            return true;
+        }
+        return false;
+    }
+
+    void levelComplete() {
+        // A replay never counts as a real completion.
+        if (interceptLevelEnd()) return;
         PlayLayer::levelComplete();
     }
 
     void playEndAnimationToPos(CCPoint pos) {
-        auto engine = MeasurementEngine::get();
-        if (engine->controls(this)) {
-            engine->onLevelEnd(this);
-            return;
-        }
+        if (interceptLevelEnd()) return;
         PlayLayer::playEndAnimationToPos(pos);
     }
 
     void playPlatformerEndAnimationToPos(CCPoint pos, bool instant) {
-        auto engine = MeasurementEngine::get();
-        if (engine->controls(this)) {
-            engine->onLevelEnd(this);
-            return;
-        }
+        if (interceptLevelEnd()) return;
         PlayLayer::playPlatformerEndAnimationToPos(pos, instant);
     }
 
@@ -79,6 +95,9 @@ class $modify(FWAPlayLayer, PlayLayer) {
         // Ignore restarts that don't come from the engine (e.g. the R key) while measuring.
         if (engine->controls(this) && !engine->resetting()) return;
         PlayLayer::resetLevel();
+        // During playback a restart (yours or ours) starts the replay from the beginning.
+        auto playback = PlaybackEngine::get();
+        if (playback->controls(this)) playback->onLevelReset(this);
     }
 
     void pauseGame(bool unfocused) {
@@ -88,6 +107,8 @@ class $modify(FWAPlayLayer, PlayLayer) {
             if (unfocused) return;
             engine->cancel("You paused the game.");
         }
+        auto playback = PlaybackEngine::get();
+        if (playback->controls(this)) playback->stop("Playback stopped.", false);
         PlayLayer::pauseGame(unfocused);
     }
 
@@ -95,6 +116,8 @@ class $modify(FWAPlayLayer, PlayLayer) {
         auto engine = MeasurementEngine::get();
         // Quitting: stop without restarting the level we are leaving.
         if (engine->controls(this)) engine->cancel("The level was closed.", false);
+        auto playback = PlaybackEngine::get();
+        if (playback->controls(this)) playback->stop("", false);
         PlayLayer::onQuit();
     }
 };

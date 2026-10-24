@@ -1,6 +1,7 @@
 #include "AnalyzerPopup.hpp"
 #include "../core/Util.hpp"
 #include "../engine/MeasurementEngine.hpp"
+#include "../engine/PlaybackEngine.hpp"
 
 #include <Geode/binding/FLAlertLayer.hpp>
 #include <Geode/binding/PauseLayer.hpp>
@@ -58,12 +59,13 @@ public:
 
 protected:
     bool init(std::string const& title, std::string const& text, std::vector<Choice> choices) {
-        float h = 110.f + 30.f * static_cast<float>(choices.size());
-        if (!Popup::init(300.f, h)) return false;
+        auto area = SimpleTextArea::create(text, "chatFont.fnt", .7f, 290.f);
+        float textH = area->getContentSize().height;
+        float h = std::clamp(70.f + textH + 30.f * static_cast<float>(choices.size()), 150.f, 310.f);
+        if (!Popup::init(320.f, h)) return false;
         this->setTitle(title.c_str());
-        auto area = SimpleTextArea::create(text, "chatFont.fnt", .8f, 270.f);
         area->setAnchorPoint({.5f, 1.f});
-        area->setPosition({150.f, h - 38.f});
+        area->setPosition({160.f, h - 36.f});
         m_mainLayer->addChild(area);
         auto menu = CCMenu::create();
         menu->setPosition({0.f, 0.f});
@@ -75,7 +77,7 @@ protected:
                 this->onClose(nullptr);
                 if (action) action();
             }, 200.f);
-            btn->setPosition({150.f, y});
+            btn->setPosition({160.f, y});
             menu->addChild(btn);
             y -= 30.f;
         }
@@ -228,16 +230,17 @@ bool AnalyzerPopup::init(int tab) {
         {"Import Macro", 0, [this] { this->onImport(); }},
         {"Sample Data", 1, [this] { this->onSample(); }},
         {"Measure", 0, [this] { this->onMeasure(); }},
+        {"Playback", 0, [this] { this->onPlayback(); }},
         {"Export", 1, [this] { this->onExport(); }},
         {"Saves", 2, [this] { this->onLoadSaved(); }},
     };
-    float x = 62.f;
+    float x = 44.f;
     for (auto& a : list) {
         auto fn = a.fn;
-        auto btn = button(a.text, .5f, a.style, [fn](auto) { fn(); }, 150.f);
+        auto btn = button(a.text, .45f, a.style, [fn](auto) { fn(); }, 150.f);
         btn->setPosition({x, 18.f});
         actions->addChild(btn);
-        x += 86.5f;
+        x += 76.f;
     }
 
     m_footer = label("", "chat", .55f, kMuted, {.5f, .5f});
@@ -375,6 +378,40 @@ void AnalyzerPopup::onMeasure() {
     if (auto p = MeasureSetupPopup::create([](std::vector<size_t> targets) { startMeasurement(std::move(targets)); })) {
         p->show();
     }
+}
+
+void AnalyzerPopup::onPlayback() {
+    auto pl = PlayLayer::get();
+    if (auto err = MeasurementEngine::checkCanMeasure(pl)) {
+        FLAlertLayer::create("Can't play back here", *err, "OK")->show();
+        return;
+    }
+    auto s = Settings::load();
+    size_t fp = PlaybackEngine::countMarked(MarkerMode::FramePerfect);
+    size_t tight = PlaybackEngine::countMarked(MarkerMode::Tight);
+    size_t all = PlaybackEngine::countMarked(MarkerMode::AllMeasured);
+    std::string text =
+        "Replays the macro in this level at normal speed. Whenever a marked click happens, a ring with its frame "
+        "window appears where the player is. Rings only appear on inputs that have a window (measure first). "
+        "Your inputs are ignored; Esc stops. Deaths and completions are not saved.";
+    if (all == 0) text += "\n\nNo inputs have a window yet, so no rings will appear.";
+    auto launch = [](MarkerMode mode) {
+        if (auto popup = AnalyzerPopup::current()) popup->onClose(nullptr);
+        if (auto scene = CCDirector::get()->getRunningScene()) {
+            if (auto pause = scene->getChildByType<PauseLayer>(0)) pause->onResume(nullptr);
+        }
+        Loader::get()->queueInMainThread([mode] {
+            if (auto err = PlaybackEngine::get()->start(PlayLayer::get(), mode)) {
+                FLAlertLayer::create("Playback", *err, "OK")->show();
+            }
+        });
+    };
+    auto popup = ChoicePopup::create("Playback", text, {
+        {"Frame perfect (<= " + num(s.framePerfectThreshold) + " f): " + std::to_string(fp), 0, [launch] { launch(MarkerMode::FramePerfect); }},
+        {"Tight (<= " + num(s.tightThreshold) + " f): " + std::to_string(tight), 1, [launch] { launch(MarkerMode::Tight); }},
+        {"Every measured input: " + std::to_string(all), 1, [launch] { launch(MarkerMode::AllMeasured); }},
+    });
+    if (popup) popup->show();
 }
 
 void AnalyzerPopup::exportTo(std::string const& kind) {
