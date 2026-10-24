@@ -85,6 +85,7 @@ struct MeasurementInfo {
     double horizonSeconds = 0.0;
     int maxShiftTicks = 0;
     bool recheckBorders = false;
+    std::string shiftMode;         // "whole-click" or "press-only"
     bool determinismChecked = false;
     bool determinismPassed = false;
     std::string notes;

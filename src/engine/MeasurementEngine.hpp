@@ -50,6 +50,7 @@ public:
         uint64_t horizonTicks = 360;
         bool recheck = true;
         bool determinism = true;
+        bool wholeClick = true;  // move a press together with its release
         int budgetMs = 14;
         std::vector<size_t> targets; // record indices to measure, chronological
     };
@@ -94,6 +95,7 @@ private:
     struct TargetState {
         size_t record = 0;      // record index
         size_t eventIndex = 0;  // index into m_events
+        std::optional<size_t> pairIndex; // the press's own release (whole-click mode)
         uint64_t frame = 0;
         int maxEarly = 0, maxLate = 0;
         std::string earlyBound, lateBound;

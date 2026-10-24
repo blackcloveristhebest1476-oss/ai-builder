@@ -442,6 +442,7 @@ json::Value toJson(Analysis const& a, ExportSettings const& s, std::optional<Pre
     meas.set("horizonSeconds", a.measurement.horizonSeconds);
     meas.set("maxShiftTicks", a.measurement.maxShiftTicks);
     meas.set("recheckBorders", a.measurement.recheckBorders);
+    meas.set("shiftMode", a.measurement.shiftMode);
     meas.set("determinismChecked", a.measurement.determinismChecked);
     meas.set("determinismPassed", a.measurement.determinismPassed);
     meas.set("notes", a.measurement.notes);
@@ -573,6 +574,7 @@ Expected<Analysis> analysisFromJson(json::Value const& doc, std::vector<Diagnost
     a.measurement.horizonSeconds = meas["horizonSeconds"].asDouble();
     a.measurement.maxShiftTicks = static_cast<int>(meas["maxShiftTicks"].asInt());
     a.measurement.recheckBorders = meas["recheckBorders"].asBool();
+    a.measurement.shiftMode = meas["shiftMode"].asString();
     a.measurement.determinismChecked = meas["determinismChecked"].asBool();
     a.measurement.determinismPassed = meas["determinismPassed"].asBool();
     a.measurement.notes = meas["notes"].asString();

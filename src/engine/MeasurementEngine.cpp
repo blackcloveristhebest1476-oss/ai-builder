@@ -107,8 +107,29 @@ std::optional<std::string> MeasurementEngine::start(PlayLayer* pl, Config cfg, s
             t.maxEarly = m_cfg.maxShift;
             t.earlyBound = "reached the maximum shift setting";
         }
+        // Whole-click mode: a press moves together with its own release (a real click is
+        // press + release), so holding the button longer can't hide a tight timing.
+        if (m_cfg.wholeClick && ev.down) {
+            for (size_t j = t.eventIndex + 1; j < m_events.size(); j++) {
+                if (m_events[j].player2 == ev.player2 && m_events[j].button == ev.button) {
+                    if (!m_events[j].down) {
+                        t.pairIndex = j;
+                        // the next limit is now the event after the release
+                        nextFrame.reset();
+                        for (size_t k = j + 1; k < m_events.size(); k++) {
+                            if (m_events[k].player2 == ev.player2 && m_events[k].button == ev.button) {
+                                nextFrame = m_events[k].frame;
+                                break;
+                            }
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        uint64_t lateFrom = t.pairIndex ? m_events[*t.pairIndex].frame : ev.frame;
         if (nextFrame) {
-            int64_t lateRoom = std::max<int64_t>(static_cast<int64_t>(*nextFrame) - static_cast<int64_t>(ev.frame) - 1, 0);
+            int64_t lateRoom = std::max<int64_t>(static_cast<int64_t>(*nextFrame) - static_cast<int64_t>(lateFrom) - 1, 0);
             if (lateRoom < m_cfg.maxShift) {
                 t.maxLate = static_cast<int>(lateRoom);
                 t.lateBound = "reached the next event on this button";
@@ -451,6 +472,10 @@ void MeasurementEngine::startTrial(int shift) {
     auto events = m_events;
     int64_t moved = static_cast<int64_t>(t.frame) + shift;
     events[t.eventIndex].frame = static_cast<uint64_t>(std::max<int64_t>(0, moved));
+    if (t.pairIndex) {
+        int64_t release = static_cast<int64_t>(m_events[*t.pairIndex].frame) + shift;
+        events[*t.pairIndex].frame = static_cast<uint64_t>(std::max<int64_t>(0, release));
+    }
     std::stable_sort(events.begin(), events.end(), [](auto const& x, auto const& y) { return x.frame < y.frame; });
     uint64_t end = std::max<uint64_t>(t.frame, static_cast<uint64_t>(std::max<int64_t>(0, moved))) + m_cfg.horizonTicks;
     m_currentShift = shift;
@@ -502,8 +527,9 @@ void MeasurementEngine::finalize(bool cancelled, std::string const& reason) {
             lower++;
         } else {
             w.status = WindowStatus::Verified;
-            w.note = "Measured by replaying the level with this input moved; survival horizon " +
-                num(m_cfg.horizonTicks / 240.0, 2) + " s.";
+            w.note = std::string("Measured by replaying the level with this ") +
+                (t.pairIndex ? "whole click (press and its release together)" : "input") +
+                " moved; survival horizon " + num(m_cfg.horizonTicks / 240.0, 2) + " s.";
             verified++;
         }
         rec.window = w;
@@ -515,6 +541,7 @@ void MeasurementEngine::finalize(bool cancelled, std::string const& reason) {
     meas.horizonSeconds = m_cfg.horizonTicks / 240.0;
     meas.maxShiftTicks = m_cfg.maxShift;
     meas.recheckBorders = m_cfg.recheck;
+    meas.shiftMode = m_cfg.wholeClick ? "whole-click" : "press-only";
     if (m_layer && m_layer->m_level) {
         meas.levelName = m_layer->m_level->m_levelName;
         meas.levelId = m_layer->m_level->m_levelID.value();

@@ -42,7 +42,7 @@ Geode cannot rewind GD's physics, and GD's practice checkpoints are not guarante
 
 1. **Baseline**: restart the level and replay the unmodified macro (inputs injected after `GJBaseGameLayer::processCommands` with `handleButton(down, button, !player2)` — the same injection point GDR bots use). Record the game mode at each input. If the baseline dies, inputs whose horizon reaches that death are marked *Baseline failed*.
 2. **Determinism check** (optional, on by default): replay it again and compare player positions and velocities at every input. If they differ (random triggers, other mods), measurement stops instead of producing unreliable numbers.
-3. **Search**: for each input, restart the level and replay the whole macro with only that input shifted. A trial **survives** if the player is alive `horizon` seconds after the shifted input with every later input unchanged (default 1.5 s), or reaches the end of the level. Because each trial starts from the level start, earlier inputs, velocity, gravity, speed changes, game mode, dual mode and triggers are simulated by GD itself.
+3. **Search**: for each input, restart the level and replay the whole macro with only that click shifted. By default the press moves together with its own release (a real click); "Press only" mode moves just the press, which in GD 2.2 can look far more forgiving because holding through a landing jumps on the exact landing tick. A trial **survives** if the player is alive `horizon` seconds after the shifted input with every later input unchanged (default 1.5 s), or reaches the end of the level. Because each trial starts from the level start, earlier inputs, velocity, gravity, speed changes, game mode, dual mode and triggers are simulated by GD itself.
 4. **Edge recheck** (optional, on by default): the last surviving and first failing shift on each side are run once more; a disagreement marks the input *Inconsistent*.
 
 The level is simulated faster than real time by stepping GD's own update many times per rendered frame (time budget setting). Long levels with many inputs take a while — the HUD shows progress, speed and an ETA; **Esc stops** and keeps everything finished so far. Measure a range (e.g. `120-180`) to focus on a hard part.
@@ -127,6 +127,7 @@ Everything is in the mod's settings (each has an explanation) and the **Settings
 | Frame-Perfect / Tight thresholds | 1 / 2 frames | |
 | Display Ranges | 0,1,2,3,4,5,6,8,10 | Buckets `[edge, next)`, last is open (10+) |
 | Marker Duration | 1.5 s | How long each playback ring stays (0 = until restart) |
+| Shift Mode | Whole click | Move a press together with its release (recommended) or only the press |
 | Max Shift / Horizon / Recheck / Determinism | 24 ticks / 1.5 s / on / on | Measurement |
 | Simulation Time per Frame | 14 ms | Speed vs responsiveness |
 | Color Theme, Automatic Saving, Background Calculation | Rainbow / on / on | |

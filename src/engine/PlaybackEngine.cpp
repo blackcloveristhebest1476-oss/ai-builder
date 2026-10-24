@@ -70,6 +70,10 @@ std::optional<std::string> PlaybackEngine::start(PlayLayer* pl, MarkerMode mode)
         ev.player2 = r.player2;
         ev.down = r.down;
         ev.markFrames = markedWindow(r, s, a.tps, mode);
+        if (ev.markFrames && isMeasured(r.window.status)) {
+            ev.split = "-" + std::to_string(r.window.earlyTicks) + (r.window.earlyLimited ? "+" : "") + " / +" +
+                std::to_string(r.window.lateTicks) + (r.window.lateLimited ? "+" : "");
+        }
         if (ev.markFrames) {
             ev.color = ui::windowColor(*ev.markFrames, s.stats().edges);
             m_marked++;
@@ -177,6 +181,15 @@ void PlaybackEngine::spawnMarker(GJBaseGameLayer* layer, PlayerObject* player, E
     label->setAnchorPoint({1.f, .5f});
     label->setPosition({-20.f, -8.f});
     node->addChild(label);
+
+    if (!ev.split.empty()) {
+        // where the window comes from: ticks of room early / late
+        auto split = CCLabelBMFont::create(ev.split.c_str(), "chatFont.fnt");
+        split->setScale(.55f);
+        split->setColor(ev.color);
+        split->setPosition({0.f, -27.f});
+        node->addChild(split);
+    }
 
     layer->m_objectLayer->addChild(node, 9999);
 

@@ -100,6 +100,7 @@ void startMeasurement(std::vector<size_t> targets) {
         cfg.horizonTicks = static_cast<uint64_t>(std::llround(settings.horizonSeconds * 240.0));
         cfg.recheck = settings.recheck;
         cfg.determinism = settings.determinismCheck;
+        cfg.wholeClick = settings.wholeClick;
         cfg.budgetMs = settings.budgetMs;
         cfg.targets = std::move(targets);
         auto err = MeasurementEngine::get()->start(pl, std::move(cfg), [](std::string const& summary) {
@@ -598,7 +599,7 @@ bool MeasureSetupPopup::init(std::function<void(std::vector<size_t>)> onStart) {
     std::string text =
         levelLine + "\n" + macroLine +
         "\n\nEach selected input is replayed from the start of the level with that one input moved earlier and later, "
-        "one tick at a time, until the player dies. Max shift " + std::to_string(s.maxShift) + " ticks, survival horizon " +
+        "one tick at a time, until the player dies" + std::string(s.wholeClick ? " (the press moves together with its release)" : " (only the press moves)") + ". Max shift " + std::to_string(s.maxShift) + " ticks, survival horizon " +
         num(s.horizonSeconds, 2) + " s" + (s.recheck ? ", edges rechecked" : "") + (s.determinismCheck ? ", determinism checked" : "") +
         ". Your inputs are ignored while it runs; press Esc to stop. Practice-mode, start positions and completions are never saved.";
     auto area = SimpleTextArea::create(text, "chatFont.fnt", .65f, 350.f);

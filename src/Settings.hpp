@@ -30,6 +30,7 @@ struct Settings {
     double horizonSeconds = 1.5;
     bool recheck = true;
     bool determinismCheck = true;
+    bool wholeClick = true;
     int budgetMs = 14;
     std::string theme = "Rainbow";
     bool autoSave = true;

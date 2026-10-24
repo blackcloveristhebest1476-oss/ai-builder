@@ -207,6 +207,13 @@
 			"min": 1,
 			"max": 480
 		},
+		"measure-shift-mode": {
+			"type": "string",
+			"name": "Shift Mode",
+			"description": "<cy>Whole click</c> (recommended): a press is moved together with its own release, like a real click. <cy>Press only</c>: only the press moves and the release stays, which means holding longer; in GD 2.2 holding through a landing jumps on the exact landing tick, so this can make tight clicks look much more forgiving than they are.",
+			"default": "Whole click",
+			"one-of": ["Whole click", "Press only"]
+		},
 		"measure-horizon": {
 			"type": "float",
 			"name": "Survival Horizon (s)",
