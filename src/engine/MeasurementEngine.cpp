@@ -159,9 +159,11 @@ std::optional<std::string> MeasurementEngine::start(PlayLayer* pl, Config cfg, s
     return std::nullopt;
 }
 
-void MeasurementEngine::cancel(std::string const& reason) {
+void MeasurementEngine::cancel(std::string const& reason, bool restartLevel) {
     if (!m_active) return;
+    if (!restartLevel) m_skipFinalReset = true;
     finalize(true, reason);
+    m_skipFinalReset = false;
 }
 
 void MeasurementEngine::beginRun(std::vector<EngineEvent> events, uint64_t endFrame, bool capture) {
@@ -173,7 +175,11 @@ void MeasurementEngine::beginRun(std::vector<EngineEvent> events, uint64_t endFr
     m_layer->resetLevel();
     m_resetting = false;
     if (auto fmod = FMODAudioEngine::get()) fmod->pauseAllMusic(true);
-    m_run.lastProgress = m_layer->m_gameState.m_currentProgress;
+    // resetLevel() should put the tick counter back to 0. If it ever still shows the
+    // previous run's value, wait until it drops before injecting inputs or judging the run.
+    m_run.startProgress = m_layer->m_gameState.m_currentProgress;
+    m_run.started = m_run.startProgress <= 1;
+    m_run.lastProgress = m_run.startProgress;
     m_runActive = true;
 }
 
@@ -194,6 +200,10 @@ std::string MeasurementEngine::modeName(PlayerObject* p) const {
 void MeasurementEngine::onProcessCommands(GJBaseGameLayer* layer) {
     if (!m_runActive || layer != m_layer) return;
     uint64_t frame = layer->m_gameState.m_currentProgress;
+    if (!m_run.started) {
+        if (frame >= m_run.startProgress) return;
+        m_run.started = true;
+    }
     m_injecting = true;
     while (m_run.next < m_run.events.size() && m_run.events[m_run.next].frame <= frame) {
         auto const& ev = m_run.events[m_run.next];
@@ -225,13 +235,13 @@ void MeasurementEngine::onProcessCommands(GJBaseGameLayer* layer) {
 }
 
 void MeasurementEngine::onPlayerDestroyed(GJBaseGameLayer* layer) {
-    if (!m_runActive || layer != m_layer || m_run.died) return;
+    if (!m_runActive || layer != m_layer || m_run.died || !m_run.started) return;
     m_run.died = true;
     m_run.deathFrame = layer->m_gameState.m_currentProgress;
 }
 
 void MeasurementEngine::onLevelEnd(GJBaseGameLayer* layer) {
-    if (!m_runActive || layer != m_layer || m_run.levelEnded) return;
+    if (!m_runActive || layer != m_layer || m_run.levelEnded || !m_run.started) return;
     m_run.levelEnded = true;
     m_run.levelEndFrame = layer->m_gameState.m_currentProgress;
 }
@@ -259,14 +269,16 @@ void MeasurementEngine::tick(float) {
         m_driving = false;
 
         uint64_t progress = m_layer->m_gameState.m_currentProgress;
-        if (progress > m_run.lastProgress) {
-            m_ticksSimulated += progress - m_run.lastProgress;
+        if (!m_run.started && progress < m_run.startProgress) m_run.started = true;
+        if (progress != m_run.lastProgress) {
+            if (progress > m_run.lastProgress) m_ticksSimulated += progress - m_run.lastProgress;
             m_run.lastProgress = progress;
             m_run.stallCalls = 0;
         } else if (++m_run.stallCalls > kStallLimit) {
             finalize(true, "The game stopped advancing during a replay (is the level paused or frozen?).");
             return;
         }
+        if (!m_run.started) continue;
 
         if (m_run.died) onRunFinished(false);
         else if (m_run.levelEnded) onRunFinished(true);
@@ -336,7 +348,11 @@ void MeasurementEngine::onRunFinished(bool success) {
         case Phase::Determinism: {
             auto& meas = Session::get().analysisMut().measurement;
             meas.determinismChecked = true;
-            bool same = m_run.died == m_baseline.died && (!m_run.died || m_run.deathFrame == m_baseline.deathFrame);
+            // The repeat run is capped just before the baseline's death (if any), so it should
+            // reach that cap alive; otherwise both runs must end the same way.
+            bool same = m_baseline.died
+                ? (!m_run.died && m_run.lastProgress >= m_capFrame) || (m_run.died && m_run.deathFrame == m_baseline.deathFrame)
+                : (!m_run.died && m_run.levelEnded == m_baseline.levelEnded);
             uint64_t firstDiff = 0;
             for (auto const& [frame, snap] : m_baseline.snapshots) {
                 auto it = m_run.snapshots.find(frame);
@@ -514,7 +530,7 @@ void MeasurementEngine::finalize(bool cancelled, std::string const& reason) {
         }
         m_cbfTouched = false;
     }
-    if (m_layer) m_layer->resetLevel(); // engine is inactive now, so this is a normal restart
+    if (m_layer && !m_skipFinalReset) m_layer->resetLevel(); // engine is inactive now, so this is a normal restart
     m_layer = nullptr;
 
     double elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - m_startedAt).count();

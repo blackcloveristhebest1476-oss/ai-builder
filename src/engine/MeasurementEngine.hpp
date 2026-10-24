@@ -57,7 +57,7 @@ public:
     /// Checks whether measurement can run on this level with the loaded analysis.
     static std::optional<std::string> checkCanMeasure(PlayLayer* pl);
     std::optional<std::string> start(PlayLayer* pl, Config cfg, std::function<void(std::string const&)> onFinished);
-    void cancel(std::string const& reason);
+    void cancel(std::string const& reason, bool restartLevel = true);
 
     bool active() const { return m_active; }
     bool controls(GJBaseGameLayer* layer) const { return m_active && layer == m_layer; }
@@ -86,6 +86,8 @@ private:
         std::map<uint64_t, PlayerSnapshot> snapshots;
         std::map<uint64_t, std::pair<std::string, std::string>> modes; // frame -> (p1 mode, p2 mode)
         uint64_t lastProgress = 0;
+        uint64_t startProgress = 0;
+        bool started = true;
         int stallCalls = 0;
     };
 
@@ -126,6 +128,7 @@ private:
     bool m_runActive = false;
     bool m_resetting = false;
     bool m_cbfTouched = false;
+    bool m_skipFinalReset = false;
     bool m_cbfPrevious = false;
     std::vector<uint64_t> m_targetFrames;
     PlayLayer* m_layer = nullptr;

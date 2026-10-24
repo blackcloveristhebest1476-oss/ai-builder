@@ -93,7 +93,8 @@ class $modify(FWAPlayLayer, PlayLayer) {
 
     void onQuit() {
         auto engine = MeasurementEngine::get();
-        if (engine->controls(this)) engine->cancel("The level was closed.");
+        // Quitting: stop without restarting the level we are leaving.
+        if (engine->controls(this)) engine->cancel("The level was closed.", false);
         PlayLayer::onQuit();
     }
 };

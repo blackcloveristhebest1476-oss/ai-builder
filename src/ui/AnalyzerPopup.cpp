@@ -101,6 +101,12 @@ void startMeasurement(std::vector<size_t> targets) {
         cfg.targets = std::move(targets);
         auto err = MeasurementEngine::get()->start(pl, std::move(cfg), [](std::string const& summary) {
             Loader::get()->queueInMainThread([summary] {
+                // If the level was left, don't attach popups to a scene that is going away.
+                if (!PlayLayer::get()) {
+                    Notification::create("Frame Window Analyzer: " + summary.substr(0, summary.find('\n')),
+                        NotificationIcon::Info, 5.f)->show();
+                    return;
+                }
                 AnalyzerPopup::open(AnalyzerPopup::Inputs);
                 if (auto p = AnalyzerPopup::current()) p->setFooter(summary.substr(0, summary.find('\n')), kAccent);
                 FLAlertLayer::create("Frame Window Analyzer", summary, "OK")->show();
