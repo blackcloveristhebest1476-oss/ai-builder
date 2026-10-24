@@ -1,0 +1,228 @@
+{
+	"geode": "5.11.2",
+	"gd": {
+		"win": "2.2081",
+		"android": "2.2081",
+		"mac": "2.2081",
+		"ios": "2.2081"
+	},
+	"id": "alexl.frame-window-analyzer",
+	"name": "Frame Window Analyzer",
+	"version": "v1.0.0",
+	"developer": "alexl",
+	"description": "Import a macro, measure how many frames early or late each click can be, and estimate NaNDL precision.",
+	"tags": ["utility", "gameplay", "interface"],
+	"dependencies": {
+		"geode.node-ids": ">=v1.23.3"
+	},
+	"settings": {
+		"title-general": {
+			"type": "title",
+			"name": "General"
+		},
+		"open-analyzer": {
+			"type": "keybind",
+			"name": "Open Analyzer",
+			"description": "Keyboard shortcut that opens the Frame Window Analyzer. In a level it pauses the game first. The analyzer is also on the pause menu.",
+			"default": "Alt+F",
+			"category": "universal"
+		},
+		"color-theme": {
+			"type": "string",
+			"name": "Color Theme",
+			"description": "Colors used for frame-window ranges in the dashboard, table and graphs.",
+			"default": "Rainbow",
+			"one-of": ["Rainbow", "Classic GD", "Monochrome"]
+		},
+		"auto-save": {
+			"type": "bool",
+			"name": "Automatic Saving",
+			"description": "Save every finished measurement and precision calculation to this mod's save folder, so results survive a restart. Your macro files are never modified.",
+			"default": true
+		},
+		"background-calculation": {
+			"type": "bool",
+			"name": "Background Calculation",
+			"description": "Run the NaNDL precision solver on a background thread so the game never freezes. Turn off only if you suspect a threading problem.",
+			"default": true
+		},
+		"title-rates": {
+			"type": "title",
+			"name": "Rates"
+		},
+		"game-fps": {
+			"type": "float",
+			"name": "Game FPS (physics rate)",
+			"description": "The physics tick rate used when a file does not store its own (GD 2.2 runs physics at <cy>240</c> ticks per second). Macros that store a framerate always use their own value. This is <cr>not</c> the timing-window rate below.",
+			"default": 240.0,
+			"min": 1.0,
+			"max": 100000.0
+		},
+		"window-fps": {
+			"type": "float",
+			"name": "Timing-Window FPS (f)",
+			"description": "The rate frame windows are counted at for NaNDL (f in w = N / f). With the default 240, one physics tick = one frame. Set 60 to express windows in 60 FPS frames (a 1-tick window then counts as 0.25 frames).",
+			"default": 240.0,
+			"min": 1.0,
+			"max": 100000.0
+		},
+		"title-precision": {
+			"type": "title",
+			"name": "NaNDL Precision Model"
+		},
+		"target-time": {
+			"type": "float",
+			"name": "Target Completion Time (s)",
+			"description": "L* is the precision for which the expected total time to complete the level equals this. Default 86400 s = 24 hours (NaNDL's default).",
+			"default": 86400.0,
+			"min": 0.001,
+			"max": 1000000000.0
+		},
+		"respawn-time": {
+			"type": "float",
+			"name": "Respawn Time (s)",
+			"description": "Added to every input's time position before calculating, exactly like the NaNDL calculator (it affects attempt time and the nerve modifier).",
+			"default": 0.0,
+			"min": 0.0,
+			"max": 3600.0
+		},
+		"fixed-precision": {
+			"type": "float",
+			"name": "Precision L (fixed mode)",
+			"description": "The precision (sigma per second) used when the Precision tab is set to 'Stats for fixed L' instead of solving for L*.",
+			"default": 100.0,
+			"min": 0.0,
+			"max": 1000000000.0
+		},
+		"nerve-enabled": {
+			"type": "bool",
+			"name": "Nerve Modifier",
+			"description": "Multiply each input's sigma by e^(-k_t * t): later inputs are harder because of nerves.",
+			"default": false
+		},
+		"nerve-constant": {
+			"type": "float",
+			"name": "Nerve Constant (k_t)",
+			"description": "NaNDL default: 0.0016520833717346. NaNDL calls its calibration an unreliable first attempt.",
+			"default": 0.0016520833717346
+		},
+		"fatigue-enabled": {
+			"type": "bool",
+			"name": "Fatigue Modifier",
+			"description": "Multiply each input's sigma by e^(-k_u * i), where i is the input number.",
+			"default": false
+		},
+		"fatigue-constant": {
+			"type": "float",
+			"name": "Fatigue Constant (k_u)",
+			"description": "NaNDL default: 0.0002727763242154.",
+			"default": 0.0002727763242154
+		},
+		"cps-enabled": {
+			"type": "bool",
+			"name": "CPS Modifier (experimental)",
+			"description": "<cr>Experimental:</c> NaNDL marks this modifier as a work in progress and unreliable. Multiplies sigma by (4 / max(1, 2c))^k_c where c is the local clicks per second. When enabled, inputs without a window use (largest window + 1) instead of always passing, like the reference calculator.",
+			"default": false
+		},
+		"cps-constant": {
+			"type": "float",
+			"name": "CPS Constant (k_c)",
+			"description": "NaNDL default: 0.2784421686721826.",
+			"default": 0.2784421686721826
+		},
+		"solver-tolerance": {
+			"type": "float",
+			"name": "Solver Tolerance (s)",
+			"description": "The solver stops when the expected completion time is within this many seconds of the target. NaNDL default: 1.",
+			"default": 1.0,
+			"min": 0.000000001,
+			"max": 1000000.0
+		},
+		"solver-max-iterations": {
+			"type": "int",
+			"name": "Solver Max Iterations",
+			"description": "Upper limit on bisection steps. NaNDL default: 240.",
+			"default": 240,
+			"min": 1,
+			"max": 10000
+		},
+		"title-counting": {
+			"type": "title",
+			"name": "Counting & Display"
+		},
+		"count-releases": {
+			"type": "bool",
+			"name": "Count Releases as Inputs",
+			"description": "By default only presses are counted (and measured). Turn on to also treat each release as an input with its own timing window, e.g. for holds that must be let go precisely.",
+			"default": false
+		},
+		"include-lower-bounds": {
+			"type": "bool",
+			"name": "Use Lower-Bound Windows",
+			"description": "Some windows hit a search limit (the maximum shift, or the neighbouring input) before failing, so the real window is at least that large. On: use the lower bound (conservative). Off: treat them as unknown.",
+			"default": true
+		},
+		"frame-perfect-threshold": {
+			"type": "float",
+			"name": "Frame-Perfect Threshold (frames)",
+			"description": "Inputs whose window is at or below this many timing-window frames are classified as frame perfect.",
+			"default": 1.0,
+			"min": 0.0,
+			"max": 1000.0
+		},
+		"tight-threshold": {
+			"type": "float",
+			"name": "Extremely Tight Threshold (frames)",
+			"description": "Inputs at or below this window size are counted as extremely tight.",
+			"default": 2.0,
+			"min": 0.0,
+			"max": 1000.0
+		},
+		"histogram-edges": {
+			"type": "string",
+			"name": "Frame-Window Display Ranges",
+			"description": "Lower edges of the frame-window ranges shown on the dashboard and histogram, comma separated. Each range includes its lower edge and excludes the next one; the last range is open (e.g. 10+).",
+			"default": "0,1,2,3,4,5,6,8,10"
+		},
+		"title-measurement": {
+			"type": "title",
+			"name": "In-Game Measurement"
+		},
+		"measure-max-shift": {
+			"type": "int",
+			"name": "Max Shift (ticks)",
+			"description": "How far (in physics ticks) each input is moved earlier and later at most. Windows that still survive at this distance are reported as a lower bound.",
+			"default": 24,
+			"min": 1,
+			"max": 480
+		},
+		"measure-horizon": {
+			"type": "float",
+			"name": "Survival Horizon (s)",
+			"description": "After a shifted input, the replay must survive this long (with all later inputs unchanged) to count as a success. Longer is safer but slower.",
+			"default": 1.5,
+			"min": 0.1,
+			"max": 30.0
+		},
+		"measure-recheck": {
+			"type": "bool",
+			"name": "Recheck Window Edges",
+			"description": "Re-run the last passing and first failing timing of each side once more. If the result changes, the input is marked Inconsistent instead of Verified.",
+			"default": true
+		},
+		"measure-determinism-check": {
+			"type": "bool",
+			"name": "Determinism Check",
+			"description": "Replay the unmodified macro twice before measuring and compare player positions at every input. Measurement stops if the two runs differ, because results would not be reliable.",
+			"default": true
+		},
+		"measure-budget-ms": {
+			"type": "int",
+			"name": "Simulation Time per Frame (ms)",
+			"description": "How many milliseconds per rendered frame the measurement may spend simulating. Higher is faster but makes the game less responsive.",
+			"default": 14,
+			"min": 2,
+			"max": 200
+		}
+	}
+}
