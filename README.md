@@ -2,7 +2,7 @@
 
 Import a macro, measure how many frames early or late every click can be while still surviving, and estimate the precision a human would need using the [NaNDL](https://nandl.pages.dev/) model.
 
-Requires **Geode v5.11+** on **Geometry Dash 2.2081** (Windows, macOS, Android, iOS builds are produced by CI).
+Requires **Geode v5.11+** on **Geometry Dash 2.2081**. CI builds Windows, macOS and Android (32/64-bit); iOS is not built.
 
 ---
 
@@ -71,7 +71,7 @@ The model is a statistical estimate under NaNDL's assumptions (independent input
 
 ### Option A — GitHub Actions (no tools needed)
 1. Put this folder in a GitHub repository (the workflow is already at `.github/workflows/build.yml`).
-2. Push. The **Build Frame Window Analyzer** workflow runs the core tests and builds Windows, macOS, iOS and Android.
+2. Push. The **Build Frame Window Analyzer** workflow runs the core tests and builds Windows, macOS and Android.
 3. Download the **Build Output** artifact and unzip it: it contains `alexl.frame-window-analyzer.geode`.
 
 ### Option B — on your PC (Windows)
