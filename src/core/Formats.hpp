@@ -77,6 +77,11 @@ private:
     std::vector<std::unique_ptr<FormatHandler>> m_handlers;
 };
 
+/// Serialises a macro in the GDR2 binary format (GDReplayFormat v2, no
+/// extensions). `gameVersion` is e.g. 22081. Output is byte-compatible with the
+/// reference writer.
+std::vector<uint8_t> writeGdr2(Macro const& macro, int gameVersion);
+
 // Individual parsers, exposed for tests.
 Expected<Macro> parseGdr2(std::span<uint8_t const> data);
 /// GDR 1 document already decoded from JSON or MessagePack.

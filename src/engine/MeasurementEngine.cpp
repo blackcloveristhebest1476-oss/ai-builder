@@ -1,4 +1,5 @@
 #include "MeasurementEngine.hpp"
+#include "RecordEngine.hpp"
 #include "../Session.hpp"
 #include "../core/Util.hpp"
 
@@ -30,6 +31,7 @@ MeasurementEngine* MeasurementEngine::get() {
 
 std::optional<std::string> MeasurementEngine::checkCanMeasure(PlayLayer* pl) {
     if (!pl) return "Open the level the macro was recorded on first. Measurement replays the macro inside the real level.";
+    if (RecordEngine::get()->active()) return "Stop recording first (Record button).";
     auto const& session = Session::get();
     if (!session.hasData()) return "Import a macro first.";
     auto const& a = session.analysis();

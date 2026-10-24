@@ -248,6 +248,49 @@ TEST("gdr2: input and replay extensions are skipped correctly") {
     CHECK_EQ(m.inputs[2].frame, uint64_t(30));
 }
 
+TEST("gdr2 writer: re-encoding the reference fixtures is byte-identical") {
+    for (auto name : {"basic.gdr2", "platformer.gdr2"}) {
+        auto data = readFixture(name);
+        REQUIRE(!data.empty());
+        auto parsed = parseGdr2(data);
+        REQUIRE(parsed.ok());
+        int version = std::string(name) == "basic.gdr2" ? 22081 : 22074;
+        auto written = writeGdr2(parsed.value(), version);
+        CHECK(written == data);
+    }
+}
+
+TEST("gdr2 writer: a recorded-style macro round-trips through the importer") {
+    Macro m;
+    m.formatId = "recorded";
+    m.meta.author = "me";
+    m.meta.botName = "Frame Window Analyzer";
+    m.meta.botVersion = 1;
+    m.meta.levelId = 99;
+    m.meta.levelName = "Rec";
+    m.meta.framerate = 240.0;
+    for (uint64_t f : {5u, 9u, 300u, 301u, 70000u, 70100u}) {
+        MacroInput in;
+        in.frame = f;
+        in.down = (f % 2) == 1;
+        in.player2 = f == 300u || f == 301u;
+        m.inputs.push_back(in);
+    }
+    auto bytesOut = writeGdr2(m, 22081);
+    auto r = importBytes(bytesOut, "rec.gdr2");
+    REQUIRE(r.ok());
+    auto const& back = *r.value().macro;
+    REQUIRE(back.inputs.size() == m.inputs.size());
+    for (size_t i = 0; i < m.inputs.size(); i++) {
+        CHECK_EQ(back.inputs[i].frame, m.inputs[i].frame);
+        CHECK_EQ(back.inputs[i].down, m.inputs[i].down);
+        CHECK_EQ(back.inputs[i].player2, m.inputs[i].player2);
+    }
+    CHECK_EQ(back.meta.levelName, std::string("Rec"));
+    CHECK_EQ(back.meta.gameVersionText, std::string("2.2081"));
+    CHECK_NEAR(*back.meta.storedDurationSeconds, 70100.0 / 240.0, 1e-5);
+}
+
 TEST("gdr2: truncated, wrong-version and corrupted files are rejected with messages") {
     auto data = readFixture("basic.gdr2");
     REQUIRE(!data.empty());

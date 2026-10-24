@@ -2,6 +2,7 @@
 #include "../core/Util.hpp"
 #include "../engine/MeasurementEngine.hpp"
 #include "../engine/PlaybackEngine.hpp"
+#include "../engine/RecordEngine.hpp"
 
 #include <Geode/binding/FLAlertLayer.hpp>
 #include <Geode/binding/PauseLayer.hpp>
@@ -227,20 +228,21 @@ bool AnalyzerPopup::init(int tab) {
     m_mainLayer->addChild(actions, 5);
     struct Action { char const* text; int style; std::function<void()> fn; };
     std::vector<Action> list = {
-        {"Import Macro", 0, [this] { this->onImport(); }},
-        {"Sample Data", 1, [this] { this->onSample(); }},
+        {"Import", 0, [this] { this->onImport(); }},
+        {"Record", 3, [this] { this->onRecord(); }},
+        {"Sample", 1, [this] { this->onSample(); }},
         {"Measure", 0, [this] { this->onMeasure(); }},
         {"Playback", 0, [this] { this->onPlayback(); }},
         {"Export", 1, [this] { this->onExport(); }},
         {"Saves", 2, [this] { this->onLoadSaved(); }},
     };
-    float x = 44.f;
+    float x = 38.f;
     for (auto& a : list) {
         auto fn = a.fn;
-        auto btn = button(a.text, .45f, a.style, [fn](auto) { fn(); }, 150.f);
+        auto btn = button(a.text, .42f, a.style, [fn](auto) { fn(); }, 140.f);
         btn->setPosition({x, 18.f});
         actions->addChild(btn);
-        x += 76.f;
+        x += 65.5f;
     }
 
     m_footer = label("", "chat", .55f, kMuted, {.5f, .5f});
@@ -378,6 +380,49 @@ void AnalyzerPopup::onMeasure() {
     if (auto p = MeasureSetupPopup::create([](std::vector<size_t> targets) { startMeasurement(std::move(targets)); })) {
         p->show();
     }
+}
+
+void AnalyzerPopup::onRecord() {
+    auto recorder = RecordEngine::get();
+    if (recorder->active()) {
+        auto popup = ChoicePopup::create("Recording",
+            "Recording attempt " + std::to_string(recorder->attempt()) + " with " + std::to_string(recorder->inputCount()) +
+            " input(s) so far. Finishing the level loads it automatically. You can also stop now:",
+            {
+                {"Use this attempt", 0, [] { RecordEngine::get()->finish(true, "stopped by you"); }},
+                {"Discard recording", 3, [] { RecordEngine::get()->finish(false, ""); }},
+                {"Keep recording", 1, [] {}},
+            });
+        if (popup) popup->show();
+        return;
+    }
+    auto pl = PlayLayer::get();
+    if (!pl) {
+        FLAlertLayer::create("Record", "Open a level first. Recording captures your own inputs while you play it.", "OK")->show();
+        return;
+    }
+    if (MeasurementEngine::get()->active() || PlaybackEngine::get()->active()) {
+        FLAlertLayer::create("Record", "Stop the measurement or playback first.", "OK")->show();
+        return;
+    }
+    auto popup = ChoicePopup::create("Record",
+        "Play the level normally. Every click is recorded on the game tick it happens. Dying starts a new attempt "
+        "(practice checkpoints are supported). When you beat the level, the run is saved as a .gdr2 file and loaded "
+        "here automatically, ready to Measure or Play back. Click Between Frames is switched off while recording.",
+        {
+            {"Start Recording", 0, [] {
+                if (auto popup = AnalyzerPopup::current()) popup->onClose(nullptr);
+                if (auto scene = CCDirector::get()->getRunningScene()) {
+                    if (auto pause = scene->getChildByType<PauseLayer>(0)) pause->onResume(nullptr);
+                }
+                Loader::get()->queueInMainThread([] {
+                    if (auto err = RecordEngine::get()->start(PlayLayer::get())) {
+                        FLAlertLayer::create("Record", *err, "OK")->show();
+                    }
+                });
+            }},
+        });
+    if (popup) popup->show();
 }
 
 void AnalyzerPopup::onPlayback() {

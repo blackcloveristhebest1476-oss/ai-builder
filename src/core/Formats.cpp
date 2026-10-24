@@ -232,6 +232,84 @@ Expected<Macro> parseGdr2(std::span<uint8_t const> data) {
     return m;
 }
 
+namespace {
+
+void putVarint(std::vector<uint8_t>& out, uint64_t v) {
+    if (v == 0) {
+        out.push_back(0);
+        return;
+    }
+    while (v > 0) {
+        uint8_t b = v & 0x7F;
+        v >>= 7;
+        if (v > 0) b |= 0x80;
+        out.push_back(b);
+    }
+}
+
+void putString(std::vector<uint8_t>& out, std::string const& s) {
+    putVarint(out, s.size());
+    out.insert(out.end(), s.begin(), s.end());
+}
+
+template <class T>
+void putBigEndian(std::vector<uint8_t>& out, T value) {
+    uint8_t bytes[sizeof(T)];
+    std::memcpy(bytes, &value, sizeof(T));
+    // The reference implementation writes floats/doubles big-endian.
+    for (size_t i = 0; i < sizeof(T); i++) {
+        out.push_back(bytes[sizeof(T) - 1 - i]);
+    }
+}
+
+} // namespace
+
+std::vector<uint8_t> writeGdr2(Macro const& macro, int gameVersion) {
+    auto const& m = macro.meta;
+    std::vector<uint8_t> out = {'G', 'D', 'R'};
+    putVarint(out, 2);
+    putString(out, "");                 // input extension tag: none
+    putString(out, m.author);
+    putString(out, m.description);
+    float duration = m.storedDurationSeconds ? static_cast<float>(*m.storedDurationSeconds)
+        : static_cast<float>(macro.durationSeconds());
+    putBigEndian(out, duration);
+    putVarint(out, static_cast<uint64_t>(static_cast<int64_t>(gameVersion)));
+    putBigEndian(out, m.framerate);
+    putVarint(out, static_cast<uint64_t>(static_cast<int64_t>(static_cast<int>(m.seed)))); // int, like the reference
+    putVarint(out, static_cast<uint64_t>(static_cast<int64_t>(m.coins)));
+    putVarint(out, m.ldm ? 1 : 0);
+    putVarint(out, m.platformer ? 1 : 0);
+    putString(out, m.botName);
+    putVarint(out, static_cast<uint64_t>(static_cast<int64_t>(m.botVersion)));
+    putVarint(out, m.levelId);
+    putString(out, m.levelName);
+    putVarint(out, 0);                  // replay extension size
+    putVarint(out, m.deathFrames.size());
+    uint64_t prev = 0;
+    for (auto d : m.deathFrames) {
+        putVarint(out, d - prev);
+        prev = d;
+    }
+    putVarint(out, macro.inputs.size());
+    size_t p1 = 0;
+    for (auto const& in : macro.inputs) p1 += in.player2 ? 0 : 1;
+    putVarint(out, p1);
+    for (int pass = 0; pass < 2; pass++) {
+        prev = 0;
+        for (auto const& in : macro.inputs) {
+            if (in.player2 != (pass == 1)) continue;
+            uint64_t delta = in.frame - prev;
+            uint64_t packed = m.platformer
+                ? (delta << 3) | (static_cast<uint64_t>(in.button & 3) << 1) | (in.down ? 1u : 0u)
+                : (delta << 1) | (in.down ? 1u : 0u);
+            putVarint(out, packed);
+            prev = in.frame;
+        }
+    }
+    return out;
+}
+
 // ---------------------------------------------------------------------------
 // GDR 1 (JSON or MessagePack document)
 // Field names verified against maxnut/GDR-converter (include/gdr_convert.hpp):

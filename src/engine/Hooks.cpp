@@ -3,6 +3,9 @@
 
 #include "MeasurementEngine.hpp"
 #include "PlaybackEngine.hpp"
+#include "RecordEngine.hpp"
+
+#include <Geode/binding/CheckpointObject.hpp>
 
 #include <Geode/modify/GJBaseGameLayer.hpp>
 #include <Geode/modify/PlayLayer.hpp>
@@ -10,6 +13,7 @@
 using namespace geode::prelude;
 using fwa::MeasurementEngine;
 using fwa::PlaybackEngine;
+using fwa::RecordEngine;
 
 class $modify(FWABaseGameLayer, GJBaseGameLayer) {
     static void onModify(auto& self) {
@@ -39,6 +43,9 @@ class $modify(FWABaseGameLayer, GJBaseGameLayer) {
         auto playback = PlaybackEngine::get();
         if (playback->controls(this) && !playback->injecting()) return;
         GJBaseGameLayer::handleButton(down, button, isPlayer1);
+        // Recording your own play: store what GD actually handled, on the tick it handled it.
+        auto recorder = RecordEngine::get();
+        if (recorder->controls(this)) recorder->onButton(this, down, button, isPlayer1);
     }
 };
 
@@ -78,6 +85,17 @@ class $modify(FWAPlayLayer, PlayLayer) {
         // A replay never counts as a real completion.
         if (interceptLevelEnd()) return;
         PlayLayer::levelComplete();
+        // Your own run while recording: finish and load the recording.
+        auto recorder = RecordEngine::get();
+        if (recorder->controls(this)) recorder->onLevelComplete(this);
+    }
+
+    void loadFromCheckpoint(CheckpointObject* checkpoint) {
+        auto recorder = RecordEngine::get();
+        if (recorder->controls(this) && checkpoint) {
+            recorder->onCheckpointLoaded(this, checkpoint->m_gameState.m_currentProgress);
+        }
+        PlayLayer::loadFromCheckpoint(checkpoint);
     }
 
     void playEndAnimationToPos(CCPoint pos) {
@@ -95,6 +113,8 @@ class $modify(FWAPlayLayer, PlayLayer) {
         // Ignore restarts that don't come from the engine (e.g. the R key) while measuring.
         if (engine->controls(this) && !engine->resetting()) return;
         PlayLayer::resetLevel();
+        auto recorder = RecordEngine::get();
+        if (recorder->controls(this)) recorder->onLevelReset(this);
         // During playback a restart (yours or ours) starts the replay from the beginning.
         auto playback = PlaybackEngine::get();
         if (playback->controls(this)) playback->onLevelReset(this);
@@ -118,6 +138,8 @@ class $modify(FWAPlayLayer, PlayLayer) {
         if (engine->controls(this)) engine->cancel("The level was closed.", false);
         auto playback = PlaybackEngine::get();
         if (playback->controls(this)) playback->stop("", false);
+        auto recorder = RecordEngine::get();
+        if (recorder->controls(this)) recorder->finish(false, "You left the level before finishing it.");
         PlayLayer::onQuit();
     }
 };

@@ -13,6 +13,7 @@ Requires **Geode v5.11+** on **Geometry Dash 2.2081**. CI builds Windows, macOS 
 | **Import** | GDR2 (binary, current GDReplayFormat), GDR 1 (JSON or MessagePack), NaNDL calculator JSON exports, CSV / plain-text frame-window tables, and this mod's own saved analyses. Format is detected from the file contents, not the extension. |
 | **Measure (Mode A)** | Inside the real level, every selected input is replayed with only that input moved −1, −2, … and +1, +2, … ticks until the player dies. Early frames, late frames, total window, asymmetry and frame-perfect classification per input. |
 | **Precision (Mode B)** | NaNDL's published equations: base model plus Nerve, Fatigue and the experimental CPS modifier, solving for **L\*** (the precision at which the expected completion time equals your target, default 24 h). |
+| **Record** | Records your own inputs while you play (normal or practice mode). When you beat the level the run is saved as a standard `.gdr2` file in the mod's `recordings` folder and loaded into the analyzer automatically. |
 | **Playback** | Replays the macro in the level at normal speed and drops a ring with the frame window at the player's position on every frame-perfect click (or every tight / every measured click). |
 | **UI** | Dashboard, sortable/searchable input table, per-input graph (hover, click, zoom, drag-to-select region, filters, individual/cumulative views), histogram, precision calculator, settings. |
 | **Export** | Full analysis JSON (re-importable), per-input CSV, and a NaNDL-calculator JSON you can load on nandl.pages.dev to cross-check. Saved analyses go to the mod's save folder; macro files are never modified. |
@@ -100,7 +101,7 @@ Copy `alexl.frame-window-analyzer.geode` into `Geometry Dash/geode/mods/` and re
 
 ## Use
 1. Open the level the macro was recorded on, pause, press the **chart button** (or **Alt+F** anywhere).
-2. **Import Macro** → pick a `.gdr2` / `.gdr` / `.json` file. The Dashboard shows format, inputs, duration, FPS, metadata and any warnings (**Details**).
+2. **Record** → *Start Recording*, then play. Beat the level and the recording opens in the analyzer by itself (or press **Record** again to use or discard the current attempt). Or **Import** → pick a `.gdr2` / `.gdr` / `.json` file. The Dashboard shows format, inputs, duration, FPS, metadata and any warnings (**Details**).
 3. **Measure** → choose `all` or a range → **Start**. Watch the HUD; Esc stops.
 4. Inspect the **Inputs** table (click a row for the detail view and a timing strip), **Graphs** and the frame-window counter on the Dashboard.
 5. **Playback** → choose *Frame perfect*, *Tight* or *Every measured input* to watch the macro with a ring on each of those clicks (ring color = frame-window range, number = window in frames). Esc stops; deaths and completions are not saved.

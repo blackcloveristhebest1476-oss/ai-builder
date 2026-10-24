@@ -49,6 +49,7 @@ public:
     void onSample();
     void onMeasure();
     void onPlayback();
+    void onRecord();
     void onExport();
     void onLoadSaved();
     void setFooter(std::string const& text, cocos2d::ccColor3B color = kMuted);
