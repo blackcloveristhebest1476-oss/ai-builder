@@ -560,6 +560,22 @@ TEST("nandl reference: required precision L* (bisection identical to the calcula
     }
 }
 
+TEST("end to end: NaNDL fixture file -> analysis -> dataset -> L* matches the calculator") {
+    auto r = importBytes(readFixture("nandl-dataset1.json"), "nandl-dataset1.json");
+    REQUIRE(r.ok());
+    REQUIRE(r.value().windows.has_value());
+    auto a = analysisFromWindowData(*r.value().windows, r.value().formatId, r.value().formatName, "x", 240.0, {});
+    auto ds = buildNandlDataset(a, CountOptions{}, 240.0, true);
+    REQUIRE(ds.rows.size() == 5);
+    auto res = nandl::solvePrecision(ds.rows, {240.0, 0.0}, kNone, {});
+    CHECK(res.status == nandl::SolveStatus::Converged);
+    CHECK_NEAR(res.precision, 24.095535278320313, 1e-12);
+    // The same windows expressed at a 60 Hz window rate give the same answer.
+    auto ds60 = buildNandlDataset(a, CountOptions{}, 60.0, true);
+    auto res60 = nandl::solvePrecision(ds60.rows, {60.0, 0.0}, kNone, {});
+    CHECK_NEAR(res60.precision, 24.095535278320313, 1e-9);
+}
+
 TEST("nandl solver: error cases and status reporting") {
     nandl::RunOptions o{240.0, 0.0};
     auto tooSmall = nandl::solvePrecision(dataset1(), o, kNone, {5.0, 1.0, 240});

@@ -24,3 +24,11 @@ endif()
 add_subdirectory($ENV{GEODE_SDK} ${CMAKE_CURRENT_BINARY_DIR}/geode)
 
 setup_geode_mod(${PROJECT_NAME})
+
+# CI only: capture compiler/linker output so failures can be reported as annotations.
+if (DEFINED ENV{FWA_CI_LOG})
+    find_package(Python3 COMPONENTS Interpreter REQUIRED)
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        CXX_COMPILER_LAUNCHER "${Python3_EXECUTABLE};${CMAKE_CURRENT_SOURCE_DIR}/ci/log_compile.py"
+        CXX_LINKER_LAUNCHER "${Python3_EXECUTABLE};${CMAKE_CURRENT_SOURCE_DIR}/ci/log_compile.py")
+endif()

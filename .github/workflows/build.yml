@@ -43,6 +43,8 @@ jobs:
 
     name: ${{ matrix.config.name }}
     runs-on: ${{ matrix.config.os }}
+    env:
+      FWA_CI_LOG: ${{ github.workspace }}/fwa-compile.log
 
     steps:
       - uses: actions/checkout@v4
@@ -52,6 +54,11 @@ jobs:
         with:
           combine: true
           target: ${{ matrix.config.target }}
+
+      - name: Report compiler errors
+        if: failure()
+        shell: bash
+        run: python3 ci/report_errors.py || python ci/report_errors.py
 
   package:
     name: Package builds
