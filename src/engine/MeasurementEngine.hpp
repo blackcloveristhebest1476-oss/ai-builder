@@ -92,6 +92,10 @@ private:
         uint64_t startProgress = 0;
         bool started = true;
         int stallCalls = 0;
+        // Movement trace around the tested input, used to tell apart timings that
+        // really change the outcome from ones GD buffers into the same tick.
+        uint64_t traceFrom = 1, traceTo = 0;
+        std::vector<double> trace;
     };
 
     struct TargetState {
@@ -108,7 +112,8 @@ private:
         // recheck queue: shifts to re-run with their expected outcome
         std::vector<std::pair<int, bool>> rechecks;
         bool earlyRecheckQueued = false, lateRecheckQueued = false;
-        bool zeroDone = false;  // tap mode: the tap at the original tick has been checked
+        bool zeroDone = false;  // the original timing has been replayed as a trial
+        std::map<int, std::vector<double>> traces; // surviving shift -> movement trace
         bool inconsistent = false;
         int trials = 0;
         bool skip = false;      // baseline failed etc.

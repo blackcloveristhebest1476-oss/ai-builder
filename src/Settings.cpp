@@ -55,6 +55,8 @@ Settings Settings::load() {
     s.wholeClick = mode != "Press only";
     s.tap = mode.rfind("Tap", 0) == 0;
     s.tapTicks = getI("measure-tap-ticks", 1);
+    s.countDistinct = Mod::get()->getSettingValue<std::string>("window-counting") != "Every surviving timing";
+    setCountDistinctOutcomes(s.countDistinct);
     s.budgetMs = getI("measure-budget-ms", 14);
     s.theme = Mod::get()->getSettingValue<std::string>("color-theme");
     s.autoSave = getB("auto-save");

@@ -235,6 +235,14 @@ void MeasurementEngine::onProcessCommands(GJBaseGameLayer* layer) {
         m_run.next++;
     }
     m_injecting = false;
+    if (frame >= m_run.traceFrom && frame <= m_run.traceTo && m_run.trace.size() < 4096) {
+        for (auto p : {layer->m_player1, layer->m_player2}) {
+            if (!p) continue;
+            m_run.trace.push_back(p->m_position.x);
+            m_run.trace.push_back(p->m_position.y);
+            m_run.trace.push_back(p->m_yVelocity);
+        }
+    }
     if (m_run.capture) {
         PlayerSnapshot s;
         bool wanted = std::binary_search(m_targetFrames.begin(), m_targetFrames.end(), frame);
@@ -401,14 +409,18 @@ void MeasurementEngine::onRunFinished(bool success) {
         case Phase::Search: {
             auto& t = m_targets[m_current];
             t.trials++;
+            if (success && !m_currentIsRecheck) t.traces[m_currentShift] = std::move(m_run.trace);
             if (m_currentIsZero) {
                 m_currentIsZero = false;
                 t.zeroDone = true;
                 if (!success) {
                     t.skip = true;
-                    t.skipNote = "A " + std::to_string(std::max(1, m_cfg.tapTicks)) + "-tick tap on the original tick dies here: this "
-                        "input needs the button held (e.g. a held jump or a hold mechanic), so it can't be measured in Tap mode. "
-                        "Use Whole click mode for it.";
+                    t.skipNote = m_cfg.tap
+                        ? "A " + std::to_string(std::max(1, m_cfg.tapTicks)) + "-tick tap on the original tick dies here: this "
+                          "input needs the button held (e.g. a held jump or a hold mechanic), so it can't be measured in Tap mode. "
+                          "Use Whole click mode for it."
+                        : "Replaying the original timing died this time although it survived before: the replay is not "
+                          "repeatable here, so this input can't be measured.";
                 }
                 return;
             }
@@ -442,8 +454,9 @@ bool MeasurementEngine::planNextTrial() {
             m_current++;
             continue;
         }
-        if (m_cfg.tap && !t.zeroDone) {
-            // First check that a tap on the original tick survives at all.
+        if (!t.zeroDone) {
+            // Replay the original timing first: it is the reference movement trace
+            // (and, in Tap mode, checks that a tap on the original tick survives at all).
             m_currentIsRecheck = false;
             m_currentIsZero = true;
             startTrial(0);
@@ -512,6 +525,10 @@ void MeasurementEngine::startTrial(int shift) {
     m_currentShift = shift;
     m_trialsRun++;
     beginRun(std::move(events), end, false);
+    // Trace the movement from just before the earliest tested timing to a few ticks after the latest.
+    int64_t from = static_cast<int64_t>(t.frame) - t.maxEarly - 1;
+    m_run.traceFrom = static_cast<uint64_t>(std::max<int64_t>(0, from));
+    m_run.traceTo = t.frame + static_cast<uint64_t>(t.maxLate) + 6;
 }
 
 void MeasurementEngine::finalize(bool cancelled, std::string const& reason) {
@@ -545,6 +562,27 @@ void MeasurementEngine::finalize(bool cancelled, std::string const& reason) {
         if (w.earlyLimited) w.earlyLimitReason = t.earlyBound;
         if (w.lateLimited) w.lateLimitReason = t.lateBound;
         w.trials = t.trials;
+        {
+            // Timings whose movement trace is identical produce the same outcome (GD
+            // buffered the click into the same tick): count them once.
+            std::vector<std::vector<double> const*> unique;
+            int surviving = 0;
+            for (auto const& [shift, trace] : t.traces) {
+                if (shift < -t.early || shift > t.late || trace.empty()) continue;
+                surviving++;
+                bool seen = false;
+                for (auto u : unique) {
+                    if (*u == trace) {
+                        seen = true;
+                        break;
+                    }
+                }
+                if (!seen) unique.push_back(&trace);
+            }
+            if (surviving == w.totalTicks() && !unique.empty()) {
+                w.distinctTicks = static_cast<int>(unique.size());
+            }
+        }
         if (t.inconsistent) {
             w.status = WindowStatus::Inconsistent;
             w.note = "Re-running the edge timings gave a different result; the replay is not fully repeatable here.";

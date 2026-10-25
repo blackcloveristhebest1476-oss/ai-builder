@@ -155,6 +155,13 @@
 			"description": "By default only presses are counted (and measured). Turn on to also treat each release as an input with its own timing window, e.g. for holds that must be let go precisely.",
 			"default": false
 		},
+		"window-counting": {
+			"type": "string",
+			"name": "Window Counting",
+			"description": "<cy>Distinct outcomes</c> (default): timings that produce exactly the same movement count once. GD buffers a click made just before touching an orb (or landing), so pressing a few ticks early can give the identical jump; those count as one timing, like a frame-step tool sees it.\n<cy>Every surviving timing</c>: every tick you could press on and survive counts, including buffered ones (the room a human actually has).",
+			"default": "Distinct outcomes",
+			"one-of": ["Distinct outcomes", "Every surviving timing"]
+		},
 		"include-lower-bounds": {
 			"type": "bool",
 			"name": "Use Lower-Bound Windows",

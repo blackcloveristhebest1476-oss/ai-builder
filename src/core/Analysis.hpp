@@ -46,6 +46,9 @@ struct WindowResult {
     // they convert correctly to any timing-window rate.
     std::optional<double> windowSeconds;
     int trials = 0;               // simulations run for this input
+    /// Measured: how many of the surviving timings give a different movement. Timings
+    /// GD buffers into the same tick (e.g. clicking just before an orb) count once.
+    std::optional<int> distinctTicks;
     std::string note;
 
     /// Total valid timing positions in ticks (early + late + 1) for measured results.
@@ -116,6 +119,13 @@ Analysis analysisFromWindowData(WindowDataset const& ds, std::string formatId, s
 bool isCounted(InputRecord const& r, CountOptions const& opt);
 /// Is this record a candidate for in-game measurement?
 bool isMeasurable(InputRecord const& r, CountOptions const& opt);
+
+/// How measured windows are counted everywhere (stats, graphs, NaNDL, exports):
+/// true = distinct outcomes (buffered timings count once), false = every surviving timing.
+void setCountDistinctOutcomes(bool distinct);
+bool countDistinctOutcomes();
+/// Ticks used as the window for a measured result under the current counting mode.
+int countedTicks(WindowResult const& w);
 
 /// Frame window of a record expressed in frames at `windowFps` (NaNDL's N_i), or
 /// nullopt when there is no usable value.

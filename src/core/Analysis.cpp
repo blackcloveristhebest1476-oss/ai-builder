@@ -137,14 +137,31 @@ bool isMeasurable(InputRecord const& r, CountOptions const& opt) {
     return isCounted(r, opt) && r.frame.has_value();
 }
 
+namespace {
+bool s_countDistinct = false;
+} // namespace
+
+void setCountDistinctOutcomes(bool distinct) {
+    s_countDistinct = distinct;
+}
+
+bool countDistinctOutcomes() {
+    return s_countDistinct;
+}
+
+int countedTicks(WindowResult const& w) {
+    if (s_countDistinct && w.distinctTicks && *w.distinctTicks > 0) return *w.distinctTicks;
+    return w.totalTicks();
+}
+
 std::optional<double> windowFrames(InputRecord const& r, double windowFps, double tps, bool includeLowerBounds) {
     auto const& w = r.window;
     switch (w.status) {
         case WindowStatus::Verified:
-            return static_cast<double>(w.totalTicks()) * windowFps / tps;
+            return static_cast<double>(countedTicks(w)) * windowFps / tps;
         case WindowStatus::LowerBound:
             if (!includeLowerBounds) return std::nullopt;
-            return static_cast<double>(w.totalTicks()) * windowFps / tps;
+            return static_cast<double>(countedTicks(w)) * windowFps / tps;
         case WindowStatus::UserSupplied:
         case WindowStatus::Estimated:
             if (w.windowSeconds) return *w.windowSeconds * windowFps;
@@ -506,6 +523,7 @@ json::Value toJson(Analysis const& a, ExportSettings const& s, std::optional<Pre
             o.set("earlyTicks", r.window.earlyTicks);
             o.set("lateTicks", r.window.lateTicks);
             o.set("totalTicks", r.window.totalTicks());
+            if (r.window.distinctTicks) o.set("distinctTicks", *r.window.distinctTicks);
             o.set("earlyLimited", r.window.earlyLimited);
             o.set("lateLimited", r.window.lateLimited);
             if (!r.window.earlyLimitReason.empty()) o.set("earlyLimitReason", r.window.earlyLimitReason);
@@ -608,6 +626,7 @@ Expected<Analysis> analysisFromJson(json::Value const& doc, std::vector<Diagnost
         r.window.lateLimitReason = o["lateLimitReason"].asString();
         if (o["windowSeconds"].isNumber()) r.window.windowSeconds = o["windowSeconds"].asDouble();
         r.window.trials = static_cast<int>(o["trials"].asInt());
+        if (o["distinctTicks"].isNumber()) r.window.distinctTicks = static_cast<int>(o["distinctTicks"].asInt());
         r.window.note = o["note"].asString();
         if ((r.window.status == WindowStatus::UserSupplied || r.window.status == WindowStatus::Estimated) && !r.window.windowSeconds) {
             diags.push_back({Severity::Warning, "Input " + std::to_string(i) + " is marked as having a window but has no value; set to Unknown."});
@@ -674,7 +693,7 @@ std::string csvNum(double v, int decimals = 6) {
 std::string toCsv(Analysis const& a, ExportSettings const& s, std::vector<double> const& passProbabilities) {
     std::string out =
         "input,counted_input,frame,time_s,player,button,event,game_mode,status,early_ticks,late_ticks,"
-        "window_ticks,window_frames,early_limited,late_limited,asymmetry,pass_probability,note\n";
+        "window_ticks,distinct_ticks,window_frames,early_limited,late_limited,asymmetry,pass_probability,note\n";
     int64_t counted = 0;
     bool keepNumbers = a.source.kind == SourceKind::WindowData;
     for (auto const& r : a.inputs) {
@@ -694,6 +713,7 @@ std::string toCsv(Analysis const& a, ExportSettings const& s, std::vector<double
         out += "," + (measured ? std::to_string(r.window.earlyTicks) : "");
         out += "," + (measured ? std::to_string(r.window.lateTicks) : "");
         out += "," + (measured ? std::to_string(r.window.totalTicks()) : "");
+        out += "," + (measured && r.window.distinctTicks ? std::to_string(*r.window.distinctTicks) : std::string());
         auto wf = windowFrames(r, s.windowFps, a.tps, true);
         out += "," + (wf ? csvNum(*wf, 6) : std::string());
         out += std::string(",") + (measured ? (r.window.earlyLimited ? "yes" : "no") : "");

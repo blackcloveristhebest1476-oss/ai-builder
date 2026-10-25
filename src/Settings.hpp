@@ -33,6 +33,7 @@ struct Settings {
     bool wholeClick = true;
     bool tap = false;
     int tapTicks = 1;
+    bool countDistinct = true;
     int budgetMs = 14;
     std::string theme = "Rainbow";
     bool autoSave = true;

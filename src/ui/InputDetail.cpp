@@ -54,7 +54,8 @@ bool InputDetailPopup::init(size_t recordIndex) {
         w ? windowColor(*w, s.stats().edges) : kMuted);
     row++;
     put(0, "Player / button", std::string(r.player2 ? "P2 / " : "P1 / ") + buttonName(r.button));
-    put(1, "Total ticks", measured ? std::to_string(r.window.totalTicks()) + " ticks" : "-");
+    put(1, "Surviving / distinct", measured ? std::to_string(r.window.totalTicks()) + " / " +
+        (r.window.distinctTicks ? std::to_string(*r.window.distinctTicks) : std::string("?")) + " ticks" : "-");
     row++;
     put(0, "Event", r.down ? "press" : "release");
     put(1, "Early / late", measured ? std::to_string(r.window.earlyTicks) + (r.window.earlyLimited ? "+" : "") + " / " +
@@ -108,6 +109,11 @@ bool InputDetailPopup::init(size_t recordIndex) {
     if (r.window.lateLimited && !r.window.lateLimitReason.empty()) evidence += "\nLate side: " + r.window.lateLimitReason + ".";
     if (r.duplicate) evidence += "\nDuplicate of the previous event (excluded).";
     if (r.redundant && !r.duplicate) evidence += "\nRedundant event: the button was already in this state (excluded).";
+    if (measured && r.window.distinctTicks && *r.window.distinctTicks < r.window.totalTicks()) {
+        evidence += "\n" + std::to_string(r.window.totalTicks()) + " timings survive, but only " +
+            std::to_string(*r.window.distinctTicks) + " give a different movement: GD buffers the others into the same tick "
+            "(e.g. clicking just before touching an orb).";
+    }
     if (evidence.empty()) evidence = "No measurement yet. Measure in-game, import frame-window data, or enter a window below.";
     auto area = SimpleTextArea::create(evidence, "chatFont.fnt", .5f, 340.f);
     area->setMaxLines(4);

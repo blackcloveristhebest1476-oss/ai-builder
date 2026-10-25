@@ -742,6 +742,22 @@ TEST("analysis: frame-window boundaries, stats and histogram buckets") {
     CHECK_NEAR(*windowFrames(a.inputs[2], 60.0, 240.0, true), 0.5, 1e-15);
 }
 
+TEST("analysis: distinct-outcome counting uses buffered-duplicate-free ticks") {
+    InputRecord r;
+    r.frame = 240;
+    r.time = 1.0;
+    r.window.status = WindowStatus::Verified;
+    r.window.earlyTicks = 3;
+    r.window.lateTicks = 0;
+    r.window.distinctTicks = 1;
+    CHECK_NEAR(*windowFrames(r, 240.0, 240.0, true), 4.0, 0);   // default: every surviving timing
+    setCountDistinctOutcomes(true);
+    CHECK_NEAR(*windowFrames(r, 240.0, 240.0, true), 1.0, 0);   // -3/+0 that all move identically = 1
+    r.window.distinctTicks.reset();
+    CHECK_NEAR(*windowFrames(r, 240.0, 240.0, true), 4.0, 0);   // no trace data -> falls back
+    setCountDistinctOutcomes(false);
+}
+
 TEST("analysis: histogram edge parsing") {
     std::string err;
     auto e = parseEdges("10, 2, 1, 2,5", &err);
