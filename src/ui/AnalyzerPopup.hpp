@@ -96,7 +96,11 @@ public:
 
 protected:
     bool init(size_t recordIndex);
+    void setWatchShift(int shift);
+    void onWatch();
     size_t m_index = 0;
+    int m_watchShift = 0;
+    cocos2d::CCLabelBMFont* m_watchLabel = nullptr;
     geode::TextInput* m_manual = nullptr;
 };
 

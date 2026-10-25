@@ -54,7 +54,7 @@ size_t PlaybackEngine::countMarked(MarkerMode mode) {
     return n;
 }
 
-std::optional<std::string> PlaybackEngine::start(PlayLayer* pl, MarkerMode mode) {
+std::optional<std::string> PlaybackEngine::start(PlayLayer* pl, MarkerMode mode, std::optional<ShiftOverride> shifted) {
     if (m_active) return "Playback is already running.";
     if (MeasurementEngine::get()->active()) return "A measurement is running.";
     if (auto err = MeasurementEngine::checkCanMeasure(pl)) return err;
@@ -80,6 +80,51 @@ std::optional<std::string> PlaybackEngine::start(PlayLayer* pl, MarkerMode mode)
             m_marked++;
         }
         m_events.push_back(ev);
+    }
+
+    if (shifted && shifted->record < m_events.size() && a.inputs[shifted->record].down) {
+        // Move this one click exactly like a measurement trial would (Shift Mode setting).
+        auto& press = m_events[shifted->record];
+        int64_t pressFrame = std::max<int64_t>(0, static_cast<int64_t>(press.frame) + shifted->shift);
+        std::optional<size_t> release;
+        for (size_t j = shifted->record + 1; j < m_events.size(); j++) {
+            if (m_events[j].player2 == press.player2 && m_events[j].button == press.button) {
+                if (!m_events[j].down) release = j;
+                break;
+            }
+        }
+        if (s.tap) {
+            uint64_t rel = static_cast<uint64_t>(pressFrame) + static_cast<uint64_t>(std::max(1, s.tapTicks));
+            if (release) {
+                m_events[*release].frame = rel;
+            } else {
+                Event r = press;
+                r.down = false;
+                r.markFrames.reset();
+                r.frame = rel;
+                m_events.push_back(r);
+            }
+        } else if (s.wholeClick && release) {
+            m_events[*release].frame = static_cast<uint64_t>(
+                std::max<int64_t>(0, static_cast<int64_t>(m_events[*release].frame) + shifted->shift));
+        }
+        auto& p = m_events[shifted->record];
+        p.frame = static_cast<uint64_t>(pressFrame);
+        // Always mark the moved click so it is easy to spot.
+        auto w = windowFrames(a.inputs[shifted->record], s.windowFps, a.tps, true);
+        p.markFrames = w.value_or(0.0);
+        p.color = w ? ui::windowColor(*w, s.stats().edges) : ccColor3B{255, 255, 255};
+        p.split = "shifted " + std::string(shifted->shift > 0 ? "+" : "") + std::to_string(shifted->shift) + " tick(s)" +
+            (s.tap ? " (tap)" : "");
+        if (!w) p.markFrames.reset();
+        m_shiftNote = "Input #" + std::to_string(shifted->record + 1) + " moved " + (shifted->shift > 0 ? "+" : "") +
+            std::to_string(shifted->shift) + " tick(s)";
+        if (!p.markFrames) {
+            p.markFrames = 0.0;
+            p.split = "shifted " + std::to_string(shifted->shift);
+        }
+    } else {
+        m_shiftNote.clear();
     }
     std::stable_sort(m_events.begin(), m_events.end(), [](auto const& x, auto const& y) { return x.frame < y.frame; });
 
@@ -225,7 +270,9 @@ void PlaybackEngine::showHud() {
     if (!scene) return;
     auto winSize = CCDirector::get()->getWinSize();
     auto label = CCLabelBMFont::create(
-        fmt::format("Playback - {} marked input(s) - your inputs are ignored - Esc to stop", m_marked).c_str(), "bigFont.fnt");
+        (m_shiftNote.empty()
+            ? fmt::format("Playback - {} marked input(s) - your inputs are ignored - Esc to stop", m_marked)
+            : fmt::format("Watching: {} - your inputs are ignored - Esc to stop", m_shiftNote)).c_str(), "bigFont.fnt");
     label->setScale(.3f);
     label->setOpacity(190);
     label->setPosition({winSize.width / 2, winSize.height - 10.f});

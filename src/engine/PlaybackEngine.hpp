@@ -25,7 +25,14 @@ public:
     /// How many counted presses would get a marker in this mode.
     static size_t countMarked(MarkerMode mode);
 
-    std::optional<std::string> start(PlayLayer* pl, MarkerMode mode);
+    /// Replays one input moved by `shift` ticks (using the Shift Mode setting) so the
+    /// result of a measurement trial can be watched in real time.
+    struct ShiftOverride {
+        size_t record = 0;
+        int shift = 0;
+    };
+
+    std::optional<std::string> start(PlayLayer* pl, MarkerMode mode, std::optional<ShiftOverride> shifted = std::nullopt);
     void stop(std::string const& reason, bool restartLevel = true);
 
     bool active() const { return m_active; }
@@ -66,6 +73,7 @@ private:
     size_t m_next = 0;
     size_t m_marked = 0;
     float m_markerSeconds = 1.5f;
+    std::string m_shiftNote;
     std::vector<geode::Ref<cocos2d::CCNode>> m_markers;
     geode::Ref<cocos2d::CCNode> m_hud;
 };

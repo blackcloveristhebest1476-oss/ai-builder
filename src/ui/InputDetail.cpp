@@ -2,6 +2,10 @@
 #include "../core/Util.hpp"
 
 #include <Geode/binding/FLAlertLayer.hpp>
+#include <Geode/binding/PauseLayer.hpp>
+#include <Geode/binding/PlayLayer.hpp>
+#include "../engine/MeasurementEngine.hpp"
+#include "../engine/PlaybackEngine.hpp"
 #include <Geode/ui/TextArea.hpp>
 
 #include <algorithm>
@@ -22,7 +26,7 @@ InputDetailPopup* InputDetailPopup::create(size_t recordIndex) {
 }
 
 bool InputDetailPopup::init(size_t recordIndex) {
-    if (!Popup::init(380.f, 270.f)) return false;
+    if (!Popup::init(380.f, 300.f)) return false;
     m_index = recordIndex;
     auto const& session = Session::get();
     auto const& a = session.analysis();
@@ -35,7 +39,7 @@ bool InputDetailPopup::init(size_t recordIndex) {
     bool measured = isMeasured(r.window.status);
 
     // ---- facts ----
-    float x = 18.f, colW = 160.f, y = 232.f;
+    float x = 18.f, colW = 160.f, y = 262.f;
     int row = 0;
     auto put = [&](int col, std::string const& n, std::string const& v, ccColor3B c = kText) {
         auto node = statRow(n, v, colW, c, .3f);
@@ -106,14 +110,36 @@ bool InputDetailPopup::init(size_t recordIndex) {
     if (r.redundant && !r.duplicate) evidence += "\nRedundant event: the button was already in this state (excluded).";
     if (evidence.empty()) evidence = "No measurement yet. Measure in-game, import frame-window data, or enter a window below.";
     auto area = SimpleTextArea::create(evidence, "chatFont.fnt", .5f, 340.f);
+    area->setMaxLines(4);
     area->setAnchorPoint({.5f, 1.f});
     area->setPosition({190.f, measured ? stripY - 22.f : stripY + 6.f});
     m_mainLayer->addChild(area);
 
-    // ---- manual entry ----
     auto menu = CCMenu::create();
     menu->setPosition({0.f, 0.f});
     m_mainLayer->addChild(menu);
+
+    // ---- watch a shifted timing ----
+    if (r.down && r.frame && a.source.kind != SourceKind::Sample && a.source.kind != SourceKind::WindowData) {
+        auto wl = label("Watch this click moved by", "big", .28f);
+        wl->setPosition({18.f, 54.f});
+        m_mainLayer->addChild(wl);
+        m_watchLabel = label("0 ticks", "big", .32f, kAccent, {.5f, .5f});
+        m_watchLabel->setPosition({222.f, 54.f});
+        m_mainLayer->addChild(m_watchLabel);
+        auto minus = button("-", .4f, 2, [this](auto) { setWatchShift(m_watchShift - 1); }, 30.f);
+        minus->setPosition({178.f, 54.f});
+        menu->addChild(minus);
+        auto plus = button("+", .4f, 2, [this](auto) { setWatchShift(m_watchShift + 1); }, 30.f);
+        plus->setPosition({266.f, 54.f});
+        menu->addChild(plus);
+        auto watch = button("Watch", .42f, 0, [this](auto) { onWatch(); }, 90.f);
+        watch->setPosition({330.f, 54.f});
+        menu->addChild(watch);
+        if (measured) setWatchShift(-(r.window.earlyTicks));
+    }
+
+    // ---- manual entry ----
     auto caption = label("Set window manually (frames @ " + num(s.windowFps) + " Hz):", "big", .28f);
     caption->setPosition({18.f, 26.f});
     m_mainLayer->addChild(caption);
@@ -151,6 +177,32 @@ bool InputDetailPopup::init(size_t recordIndex) {
         menu->addChild(clear);
     }
     return true;
+}
+
+void InputDetailPopup::setWatchShift(int shift) {
+    m_watchShift = std::clamp(shift, -480, 480);
+    if (m_watchLabel) {
+        m_watchLabel->setString(((m_watchShift > 0 ? "+" : "") + std::to_string(m_watchShift) + " ticks").c_str());
+    }
+}
+
+void InputDetailPopup::onWatch() {
+    auto pl = PlayLayer::get();
+    if (auto err = MeasurementEngine::checkCanMeasure(pl)) {
+        FLAlertLayer::create("Watch", *err, "OK")->show();
+        return;
+    }
+    PlaybackEngine::ShiftOverride ov{m_index, m_watchShift};
+    this->onClose(nullptr);
+    if (auto popup = AnalyzerPopup::current()) popup->onClose(nullptr);
+    if (auto scene = CCDirector::get()->getRunningScene()) {
+        if (auto pause = scene->getChildByType<PauseLayer>(0)) pause->onResume(nullptr);
+    }
+    Loader::get()->queueInMainThread([ov] {
+        if (auto err = PlaybackEngine::get()->start(PlayLayer::get(), MarkerMode::FramePerfect, ov)) {
+            FLAlertLayer::create("Watch", *err, "OK")->show();
+        }
+    });
 }
 
 } // namespace fwa::ui

@@ -103,7 +103,7 @@ Copy `alexl.frame-window-analyzer.geode` into `Geometry Dash/geode/mods/` and re
 1. Open the level the macro was recorded on, pause, press the **chart button** (or **Alt+F** anywhere).
 2. **Record** → *Start Recording*, then play. Beat the level and the recording opens in the analyzer by itself (or press **Record** again to use or discard the current attempt). Or **Import** → pick a `.gdr2` / `.gdr` / `.json` file. The Dashboard shows format, inputs, duration, FPS, metadata and any warnings (**Details**).
 3. **Measure** → choose `all` or a range → **Start**. Watch the HUD; Esc stops.
-4. Inspect the **Inputs** table (click a row for the detail view and a timing strip), **Graphs** and the frame-window counter on the Dashboard.
+4. Inspect the **Inputs** table (click a row for the detail view and a timing strip; **Watch** replays the level at normal speed with that click moved by the ticks you pick, so you can check a measured edge with your own eyes and hitboxes), **Graphs** and the frame-window counter on the Dashboard.
 5. **Playback** → choose *Frame perfect*, *Tight* or *Every measured input* to watch the macro with a ring on each of those clicks (ring color = frame-window range, number = window in frames). Esc stops; deaths and completions are not saved.
 6. **Precision** → *Solve L\** (or *Stats for fixed L*), toggle modifiers → **Calculate** (runs in the background).
 7. **Export** JSON / CSV / NaNDL, or **Saves** to save, reload or open the saves folder.
