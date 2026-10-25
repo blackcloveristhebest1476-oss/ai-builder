@@ -114,6 +114,7 @@ private:
         bool earlyRecheckQueued = false, lateRecheckQueued = false;
         bool zeroDone = false;  // the original timing has been replayed as a trial
         std::map<int, std::vector<double>> traces; // surviving shift -> movement trace
+        std::map<int, double> log;                 // shift -> death time in s, or -1 if it survived
         bool inconsistent = false;
         int trials = 0;
         bool skip = false;      // baseline failed etc.

@@ -195,6 +195,15 @@ void MeasurementEngine::beginRun(std::vector<EngineEvent> events, uint64_t endFr
     m_run.events = std::move(events);
     m_run.endFrame = std::min(endFrame, m_capFrame);
     m_run.capture = capture;
+    // Release every button first: if the previous replay ended mid-hold, GD would carry
+    // the held button into the new attempt and change its first jump.
+    m_injecting = true;
+    for (bool isPlayer1 : {true, false}) {
+        for (int button = 1; button <= 3; button++) m_layer->handleButton(false, button, isPlayer1);
+    }
+    m_injecting = false;
+    if (m_layer->m_player1) m_layer->m_player1->releaseAllButtons();
+    if (m_layer->m_player2) m_layer->m_player2->releaseAllButtons();
     m_resetting = true;
     m_layer->resetLevel();
     m_resetting = false;
@@ -410,6 +419,7 @@ void MeasurementEngine::onRunFinished(bool success) {
             auto& t = m_targets[m_current];
             t.trials++;
             if (success && !m_currentIsRecheck) t.traces[m_currentShift] = std::move(m_run.trace);
+            if (!m_currentIsRecheck) t.log[m_currentShift] = success ? -1.0 : m_run.deathFrame / 240.0;
             if (m_currentIsZero) {
                 m_currentIsZero = false;
                 t.zeroDone = true;
@@ -601,6 +611,15 @@ void MeasurementEngine::finalize(bool cancelled, std::string const& reason) {
                  t.pairIndex ? "whole click (press and its release together)" : "input") +
                 " moved; survival horizon " + num(m_cfg.horizonTicks / 240.0, 2) + " s.";
             verified++;
+        }
+        if (!t.log.empty()) {
+            std::string log = "\nTested:";
+            for (auto const& [shift, death] : t.log) {
+                log += std::string(" ") + (shift > 0 ? "+" : "") + std::to_string(shift) +
+                    (death < 0 ? " ok" : " died@" + num(death, 2) + "s") + ",";
+            }
+            log.pop_back();
+            w.note += log;
         }
         rec.window = w;
     }

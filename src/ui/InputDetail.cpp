@@ -115,8 +115,8 @@ bool InputDetailPopup::init(size_t recordIndex) {
             "(e.g. clicking just before touching an orb).";
     }
     if (evidence.empty()) evidence = "No measurement yet. Measure in-game, import frame-window data, or enter a window below.";
-    auto area = SimpleTextArea::create(evidence, "chatFont.fnt", .5f, 340.f);
-    area->setMaxLines(4);
+    auto area = SimpleTextArea::create(evidence, "chatFont.fnt", .42f, 350.f);
+    area->setMaxLines(7);
     area->setAnchorPoint({.5f, 1.f});
     area->setPosition({190.f, measured ? stripY - 22.f : stripY + 6.f});
     m_mainLayer->addChild(area);
