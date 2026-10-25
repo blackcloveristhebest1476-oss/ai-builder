@@ -29,7 +29,7 @@ const CCSize kContentSize{450.f, 190.f};
 
 AnalyzerPopup* s_current = nullptr;
 
-char const* kTabNames[] = {"Dashboard", "Inputs", "Graphs", "Precision", "Settings"};
+char const* kTabNames[] = {"Dashboard", "Inputs", "Graphs", "Sounds", "Precision", "Settings"};
 
 std::string settingsSignature() {
     auto s = Settings::load();
@@ -216,6 +216,7 @@ bool AnalyzerPopup::init(int tab) {
             case Dashboard: t = createDashboardTab(this, kContentSize); break;
             case Inputs: t = createInputsTab(this, kContentSize); break;
             case Graphs: t = createGraphsTab(this, kContentSize); break;
+            case Sounds: t = createSoundsTab(this, kContentSize); break;
             case Precision: t = createPrecisionTab(this, kContentSize); break;
             default: t = createSettingsTab(this, kContentSize); break;
         }
@@ -271,10 +272,10 @@ void AnalyzerPopup::setFooter(std::string const& text, ccColor3B color) {
 
 void AnalyzerPopup::buildTabBar() {
     m_tabMenu->removeAllChildren();
-    float spacing = 88.f;
-    float x0 = kWidth / 2 - spacing * 2;
+    float spacing = 74.f;
+    float x0 = kWidth / 2 - spacing * (TabCount - 1) / 2.f;
     for (int i = 0; i < TabCount; i++) {
-        auto btn = button(kTabNames[i], .45f, i == m_tab ? 0 : 2, [this, i](auto) {
+        auto btn = button(kTabNames[i], .4f, i == m_tab ? 0 : 2, [this, i](auto) {
             defer(this, [this, i] { this->selectTab(i); });
         }, 170.f);
         btn->setPosition({x0 + spacing * i, kHeight - 42.f});

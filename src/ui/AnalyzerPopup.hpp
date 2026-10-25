@@ -33,7 +33,7 @@ protected:
 
 class AnalyzerPopup : public geode::Popup {
 public:
-    enum TabId { Dashboard = 0, Inputs, Graphs, Precision, SettingsTabId, TabCount };
+    enum TabId { Dashboard = 0, Inputs, Graphs, Sounds, Precision, SettingsTabId, TabCount };
 
     static AnalyzerPopup* create(int tab = Dashboard);
     /// Opens the analyzer (pausing the level first if one is running).
@@ -121,6 +121,7 @@ protected:
 Tab* createDashboardTab(AnalyzerPopup* popup, cocos2d::CCSize size);
 Tab* createInputsTab(AnalyzerPopup* popup, cocos2d::CCSize size);
 Tab* createGraphsTab(AnalyzerPopup* popup, cocos2d::CCSize size);
+Tab* createSoundsTab(AnalyzerPopup* popup, cocos2d::CCSize size);
 Tab* createPrecisionTab(AnalyzerPopup* popup, cocos2d::CCSize size);
 Tab* createSettingsTab(AnalyzerPopup* popup, cocos2d::CCSize size);
 

@@ -714,6 +714,7 @@ TEST("analysis: frame-window boundaries, stats and histogram buckets") {
     auto a = measuredAnalysis();
     CHECK_EQ(a.inputs[2].window.totalTicks(), 2);
     StatsOptions so;
+    so.edges = {0, 1, 2, 3, 4, 5, 6, 8, 10};
     auto s = computeWindowStats(a, so);
     CHECK_EQ(s.totalInputs, size_t(7));
     CHECK_EQ(s.countedInputs, size_t(5));
@@ -733,6 +734,14 @@ TEST("analysis: frame-window boundaries, stats and histogram buckets") {
     CHECK(s.histogram.counts == expected);
     CHECK_EQ(s.histogram.labels.front(), std::string("0-1"));
     CHECK_EQ(s.histogram.labels.back(), std::string("10+"));
+    // default ranges are the counter style 1,2,3,4,5-6,7-8,9-12,13-16,17+ (windows below 1 land in "1")
+    StatsOptions def;
+    def.integerLabels = true;
+    auto d = computeWindowStats(a, def);
+    std::vector<size_t> expectedDefault = {1, 1, 0, 0, 1, 0, 1, 0, 0}; // 1, 2, 5 (5-6), 12 (9-12)
+    CHECK(d.histogram.counts == expectedDefault);
+    CHECK_EQ(d.histogram.labels.front(), std::string("1"));
+    CHECK_EQ(d.histogram.labels.back(), std::string("17+"));
 
     so.includeLowerBounds = false;
     auto s2 = computeWindowStats(a, so);
@@ -762,8 +771,14 @@ TEST("analysis: histogram edge parsing") {
     std::string err;
     auto e = parseEdges("10, 2, 1, 2,5", &err);
     CHECK(err.empty());
-    std::vector<double> expected = {0, 1, 2, 5, 10};
+    std::vector<double> expected = {1, 2, 5, 10};
     CHECK(e == expected);
+    // whole-frame labels like the playback counter: 1, 2, 3, 4, 5-6, 7-8, 9-12, 13-16, 17+
+    auto labels = bucketLabels({1, 2, 3, 4, 5, 7, 9, 13, 17}, true);
+    std::vector<std::string> want = {"1", "2", "3", "4", "5-6", "7-8", "9-12", "13-16", "17+"};
+    CHECK(labels == want);
+    CHECK_EQ(bucketIndex(0.5, {1, 2, 3}), size_t(0));
+    CHECK_EQ(bucketIndex(18.0, {1, 2, 3, 17}), size_t(3));
     parseEdges("1,x", &err);
     CHECK(!err.empty());
 }

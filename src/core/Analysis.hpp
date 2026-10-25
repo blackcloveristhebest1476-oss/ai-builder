@@ -141,10 +141,15 @@ struct Histogram {
     std::vector<std::string> labels;  // "0-1", "1-2", ..., "10+"
 };
 
-/// Parses "0,1,2,3,4,5,6,8,10" (ascending, unique, >= 0). Falls back to the default on error.
+/// Parses "1,2,3,4,5,7,9,13,17" (ascending, unique, >= 0). Falls back to the default on error.
 std::vector<double> parseEdges(std::string_view text, std::string* error = nullptr);
 std::vector<double> defaultEdges();
-Histogram makeHistogram(std::vector<double> const& values, std::vector<double> const& edges);
+/// integerLabels: label buckets as whole-frame ranges ("1", "5-6", "17+") instead of
+/// "1-2" style edges. Only meaningful when windows are whole numbers.
+Histogram makeHistogram(std::vector<double> const& values, std::vector<double> const& edges, bool integerLabels = false);
+/// Index of the bucket [edges[i], edges[i+1]) that contains v.
+size_t bucketIndex(double v, std::vector<double> const& edges);
+std::vector<std::string> bucketLabels(std::vector<double> const& edges, bool integerLabels);
 
 struct WindowStats {
     size_t totalInputs = 0;
@@ -179,6 +184,7 @@ struct StatsOptions {
     double tightThreshold = 2.0;
     bool includeLowerBounds = true;
     std::vector<double> edges = defaultEdges();
+    bool integerLabels = false;
     CountOptions count;
 };
 

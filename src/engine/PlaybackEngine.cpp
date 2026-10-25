@@ -3,6 +3,7 @@
 #include "../Session.hpp"
 #include "../core/Util.hpp"
 #include "../ui/Theme.hpp"
+#include "../Sounds.hpp"
 
 #include <Geode/binding/PlayLayer.hpp>
 #include <Geode/binding/PlayerObject.hpp>
@@ -61,6 +62,12 @@ std::optional<std::string> PlaybackEngine::start(PlayLayer* pl, MarkerMode mode,
 
     auto const& a = Session::get().analysis();
     auto s = Settings::load();
+    auto stats = s.stats();
+    m_edges = stats.edges;
+    m_rangeLabels = bucketLabels(m_edges, stats.integerLabels);
+    m_counts.assign(m_edges.size(), 0);
+    std::vector<std::string> rangeSounds;
+    for (double e : m_edges) rangeSounds.push_back(sounds::enabled() ? sounds::soundForEdge(e) : std::string());
     m_events.clear();
     m_marked = 0;
     for (auto const& r : a.inputs) {
@@ -78,6 +85,13 @@ std::optional<std::string> PlaybackEngine::start(PlayLayer* pl, MarkerMode mode,
         if (ev.markFrames) {
             ev.color = ui::windowColor(*ev.markFrames, s.stats().edges);
             m_marked++;
+        }
+        // Counter + sounds: every counted press that has a window, whatever the marker mode.
+        if (r.down && isCounted(r, s.count()) && r.window.status != WindowStatus::Inconsistent) {
+            if (auto w = windowFrames(r, s.windowFps, a.tps, true)) {
+                ev.bucket = bucketIndex(*w, m_edges);
+                ev.sound = rangeSounds[*ev.bucket];
+            }
         }
         m_events.push_back(ev);
     }
@@ -148,6 +162,10 @@ void PlaybackEngine::stop(std::string const& reason, bool restartLevel) {
     m_active = false;
     m_injecting = false;
     hideHud();
+    if (m_counter) {
+        // Leave the totals readable for a few seconds, then clear them away.
+        m_counter->runAction(CCSequence::create(CCDelayTime::create(6.f), CCFadeOut::create(.5f), CCRemoveSelf::create(), nullptr));
+    }
     auto layer = m_layer;
     m_layer = nullptr;
     if (!reason.empty()) {
@@ -173,6 +191,8 @@ void PlaybackEngine::onLevelReset(GJBaseGameLayer* layer) {
     if (layer != m_layer) return;
     m_next = 0;
     clearMarkers();
+    std::fill(m_counts.begin(), m_counts.end(), 0);
+    updateCounter();
 }
 
 void PlaybackEngine::onProcessCommands(GJBaseGameLayer* layer) {
@@ -182,6 +202,11 @@ void PlaybackEngine::onProcessCommands(GJBaseGameLayer* layer) {
     while (m_next < m_events.size() && m_events[m_next].frame <= frame) {
         auto const& ev = m_events[m_next];
         layer->handleButton(ev.down, ev.button, !ev.player2);
+        if (ev.bucket && *ev.bucket < m_counts.size()) {
+            m_counts[*ev.bucket]++;
+            updateCounter();
+            sounds::play(ev.sound);
+        }
         if (ev.markFrames) {
             bool twoPlayer = layer->m_levelSettings && layer->m_levelSettings->m_twoPlayerMode;
             if (ev.player2 && twoPlayer) {
@@ -279,11 +304,62 @@ void PlaybackEngine::showHud() {
     label->setID("playback-hud"_spr);
     scene->addChild(label, 10000);
     m_hud = label;
+    buildCounter();
+}
+
+void PlaybackEngine::buildCounter() {
+    if (m_counter) m_counter->removeFromParent();
+    m_counter = nullptr;
+    m_counterLabels.clear();
+    auto where = Mod::get()->getSettingValue<std::string>("playback-counter");
+    if (where == "Hidden" || m_edges.empty()) return;
+    auto scene = CCDirector::get()->getRunningScene();
+    if (!scene) return;
+    auto winSize = CCDirector::get()->getWinSize();
+    bool right = where == "Top right";
+    float scale = static_cast<float>(std::clamp(Mod::get()->getSettingValue<double>("playback-counter-scale"), .2, 2.0));
+    float rowH = 34.f * scale;
+    auto node = CCNodeRGBA::create();
+    node->setCascadeOpacityEnabled(true); // so the fade-out after playback reaches the labels
+    node->setID("playback-counter"_spr);
+    size_t n = m_edges.size();
+    m_counterLabels.assign(n, nullptr);
+    for (size_t k = 0; k < n; k++) {
+        size_t bucket = n - 1 - k; // widest range on top
+        auto color = ui::bucketColor(bucket, n);
+        float y = -rowH * static_cast<float>(k);
+        auto name = CCLabelBMFont::create((m_rangeLabels[bucket] + ":").c_str(), "bigFont.fnt");
+        name->setScale(scale);
+        name->setColor(color);
+        name->setAnchorPoint({0.f, .5f});
+        name->setPosition({0.f, y});
+        node->addChild(name);
+        auto count = CCLabelBMFont::create("0", "bigFont.fnt");
+        count->setScale(scale);
+        count->setColor(color);
+        count->setAnchorPoint({0.f, .5f});
+        count->setPosition({130.f * scale, y});
+        node->addChild(count);
+        m_counterLabels[bucket] = count;
+    }
+    float width = 175.f * scale;
+    node->setPosition({right ? winSize.width - width - 6.f : 8.f, winSize.height - 22.f - rowH / 2});
+    scene->addChild(node, 10000);
+    m_counter = node;
+    updateCounter();
+}
+
+void PlaybackEngine::updateCounter() {
+    for (size_t i = 0; i < m_counterLabels.size() && i < m_counts.size(); i++) {
+        if (m_counterLabels[i]) m_counterLabels[i]->setString(std::to_string(m_counts[i]).c_str());
+    }
 }
 
 void PlaybackEngine::hideHud() {
     if (m_hud) m_hud->removeFromParent();
     m_hud = nullptr;
+    // The counter stays on screen after playback ends so the totals can be read;
+    // it is removed when the next playback starts or the level is left.
 }
 
 } // namespace fwa

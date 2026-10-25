@@ -56,6 +56,8 @@ private:
         cocos2d::ccColor3B color{255, 255, 255};
         std::string split; // "-early +late" ticks for measured inputs
         bool lowerBound = false;
+        std::optional<size_t> bucket; // counter range for presses with a window
+        std::string sound;            // sound to play for this press ("" = none)
     };
 
     PlaybackEngine() = default;
@@ -63,6 +65,8 @@ private:
     void clearMarkers();
     void showHud();
     void hideHud();
+    void buildCounter();
+    void updateCounter();
 
     bool m_active = false;
     bool m_injecting = false;
@@ -76,6 +80,11 @@ private:
     std::string m_shiftNote;
     std::vector<geode::Ref<cocos2d::CCNode>> m_markers;
     geode::Ref<cocos2d::CCNode> m_hud;
+    geode::Ref<cocos2d::CCNode> m_counter;
+    std::vector<cocos2d::CCLabelBMFont*> m_counterLabels; // children of m_counter, per range
+    std::vector<size_t> m_counts;
+    std::vector<std::string> m_rangeLabels;
+    std::vector<double> m_edges;
 };
 
 } // namespace fwa

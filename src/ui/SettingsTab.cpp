@@ -83,8 +83,18 @@ private:
             y -= 20.f;
         }
 
-        auto all = button("All Settings...", .45f, 1, [](auto) { openSettingsPopup(Mod::get()); }, 180.f);
-        all->setPosition({320.f, 40.f});
+        auto all = button("All Settings...", .4f, 1, [](auto) { openSettingsPopup(Mod::get()); }, 180.f);
+        all->setPosition({292.f, 40.f});
+        menu->addChild(all);
+        // One-click look matching the classic frame-window counter:
+        // 1, 2, 3, 4, 5-6, 7-8, 9-12, 13-16, 17+ in red -> pink.
+        auto counter = button("Counter Style", .4f, 0, [this](auto) {
+            Mod::get()->setSettingValue<std::string>("histogram-edges", "1, 2, 3, 4, 5, 7, 9, 13, 17");
+            Mod::get()->setSettingValue<std::string>("color-theme", "Counter");
+            reloadTheme();
+            defer(this, [this] { m_popup->refreshAll(); });
+        }, 180.f);
+        counter->setPosition({392.f, 40.f});
         menu->addChild(all);
         auto reset = button("Reset to Defaults", .45f, 3, [this](auto) {
             createQuickPopup("Reset Settings", "Reset <cy>all</c> Frame Window Analyzer settings (including the keybind) to their defaults?",

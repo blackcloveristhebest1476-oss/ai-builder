@@ -105,9 +105,10 @@ Copy `alexl.frame-window-analyzer.geode` into `Geometry Dash/geode/mods/` and re
 2. **Record** → *Start Recording*, then play. Beat the level and the recording opens in the analyzer by itself (or press **Record** again to use or discard the current attempt). Or **Import** → pick a `.gdr2` / `.gdr` / `.json` file. The Dashboard shows format, inputs, duration, FPS, metadata and any warnings (**Details**).
 3. **Measure** → choose `all` or a range → **Start**. Watch the HUD; Esc stops.
 4. Inspect the **Inputs** table (click a row for the detail view and a timing strip; **Watch** replays the level at normal speed with that click moved by the ticks you pick, so you can check a measured edge with your own eyes and hitboxes), **Graphs** and the frame-window counter on the Dashboard.
-5. **Playback** → choose *Frame perfect*, *Tight* or *Every measured input* to watch the macro with a ring on each of those clicks (ring color = frame-window range, number = window in frames). Esc stops; deaths and completions are not saved.
-6. **Precision** → *Solve L\** (or *Stats for fixed L*), toggle modifiers → **Calculate** (runs in the background).
-7. **Export** JSON / CSV / NaNDL, or **Saves** to save, reload or open the saves folder.
+5. **Playback** → choose *Frame perfect*, *Tight* or *Every measured input* to watch the macro with a ring on each of those clicks (ring color = frame-window range, number = window in frames). Esc stops; deaths and completions are not saved. A **counter** in the top-left corner shows how many clicks of each frame-window range have been played so far (position and size in All Settings → *Playback Counter*).
+6. **Sounds** tab: pick a sound for each range (built-in GD sounds with **<** / **>**, or **File...** for your own .ogg/.mp3/.wav). Playback plays it the moment a click from that range happens. **Test** plays it now, **x** clears it, and the top row has an on/off switch and volume.
+7. **Precision** → *Solve L\** (or *Stats for fixed L*), toggle modifiers → **Calculate** (runs in the background).
+8. **Export** JSON / CSV / NaNDL, or **Saves** to save, reload or open the saves folder.
 
 No macro? **Sample Data** loads clearly-labelled synthetic data. Have frame windows from elsewhere? Import a NaNDL JSON or a CSV (`input,time_s,window_frames`, `-` for ignored).
 
@@ -127,7 +128,7 @@ Everything is in the mod's settings (each has an explanation) and the **Settings
 | Window Counting | Distinct outcomes | Timings that produce exactly the same movement (GD buffered the click, e.g. just before an orb) count once; or count every surviving timing |
 | Use Lower-Bound Windows | on | Off = treat them as unknown |
 | Frame-Perfect / Tight thresholds | 1 / 2 frames | |
-| Display Ranges | 0,1,2,3,4,5,6,8,10 | Buckets `[edge, next)`, last is open (10+) |
+| Display Ranges | 1, 2, 3, 4, 5, 7, 9, 13, 17 | Buckets `[edge, next)`, last is open (17+) |
 | Marker Duration | 1.5 s | How long each playback ring stays (0 = until restart) |
 | Shift Mode | Whole click | *Whole click* keeps your hold length (GD buffers held clicks into orbs/landings); *Tap* replaces the click with a short tap like a frame-step tool; *Press only* moves just the press |
 | Tap Length | 1 tick | Hold length used in Tap mode |

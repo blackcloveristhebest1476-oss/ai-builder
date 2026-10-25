@@ -79,6 +79,8 @@ StatsOptions Settings::stats() const {
     o.tightThreshold = tightThreshold;
     o.includeLowerBounds = includeLowerBounds;
     o.edges = edges.empty() ? defaultEdges() : edges;
+    // Whole-frame labels ("5-6", "17+") when windows are whole ticks (window rate = physics rate).
+    o.integerLabels = std::fabs(windowFps - gameFps) < 1e-9;
     o.count = count();
     return o;
 }

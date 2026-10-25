@@ -174,7 +174,7 @@ std::optional<double> windowFrames(InputRecord const& r, double windowFps, doubl
 // ---------------------------------------------------------------------------
 
 std::vector<double> defaultEdges() {
-    return {0, 1, 2, 3, 4, 5, 6, 8, 10};
+    return {1, 2, 3, 4, 5, 7, 9, 13, 17};
 }
 
 std::vector<double> parseEdges(std::string_view text, std::string* error) {
@@ -212,7 +212,7 @@ std::vector<double> parseEdges(std::string_view text, std::string* error) {
         if (error) *error = "No edges given.";
         return defaultEdges();
     }
-    if (out.front() != 0.0) out.insert(out.begin(), 0.0);
+    // Values below the first edge are counted in the first range.
     if (out.size() > 24) {
         if (error) *error = "At most 24 edges are supported.";
         return defaultEdges();
@@ -220,20 +220,36 @@ std::vector<double> parseEdges(std::string_view text, std::string* error) {
     return out;
 }
 
-Histogram makeHistogram(std::vector<double> const& values, std::vector<double> const& edges) {
+size_t bucketIndex(double v, std::vector<double> const& edges) {
+    auto it = std::upper_bound(edges.begin(), edges.end(), v);
+    return it == edges.begin() ? 0 : static_cast<size_t>(it - edges.begin()) - 1;
+}
+
+std::vector<std::string> bucketLabels(std::vector<double> const& edges, bool integerLabels) {
+    std::vector<std::string> labels;
+    bool allInt = integerLabels && std::all_of(edges.begin(), edges.end(), [](double e) { return e == std::floor(e); });
+    for (size_t i = 0; i < edges.size(); i++) {
+        bool last = i + 1 == edges.size();
+        if (allInt) {
+            if (last) labels.push_back(num(edges[i]) + "+");
+            else if (edges[i + 1] - edges[i] <= 1.0) labels.push_back(num(edges[i]));
+            else labels.push_back(num(edges[i]) + "-" + num(edges[i + 1] - 1.0));
+        } else {
+            if (last) labels.push_back(num(edges[i]) + "+");
+            else labels.push_back(num(edges[i]) + "-" + num(edges[i + 1]));
+        }
+    }
+    return labels;
+}
+
+Histogram makeHistogram(std::vector<double> const& values, std::vector<double> const& edges, bool integerLabels) {
     Histogram h;
     h.edges = edges.empty() ? defaultEdges() : edges;
     h.counts.assign(h.edges.size(), 0);
-    for (size_t i = 0; i < h.edges.size(); i++) {
-        if (i + 1 < h.edges.size()) h.labels.push_back(num(h.edges[i]) + "-" + num(h.edges[i + 1]));
-        else h.labels.push_back(num(h.edges[i]) + "+");
-    }
+    h.labels = bucketLabels(h.edges, integerLabels);
     for (double v : values) {
         if (!std::isfinite(v)) continue;
-        // bucket j holds edges[j] <= v < edges[j+1]
-        auto it = std::upper_bound(h.edges.begin(), h.edges.end(), v);
-        size_t j = it == h.edges.begin() ? 0 : static_cast<size_t>(it - h.edges.begin()) - 1;
-        h.counts[j]++;
+        h.counts[bucketIndex(v, h.edges)]++;
     }
     return h;
 }
@@ -303,7 +319,7 @@ WindowStats computeWindowStats(Analysis const& a, StatsOptions const& opt) {
         s.minimum = sorted.front();
         s.maximum = sorted.back();
     }
-    s.histogram = makeHistogram(values, opt.edges);
+    s.histogram = makeHistogram(values, opt.edges, opt.integerLabels);
     return s;
 }
 

@@ -31,7 +31,7 @@
 			"name": "Color Theme",
 			"description": "Colors used for frame-window ranges in the dashboard, table and graphs.",
 			"default": "Rainbow",
-			"one-of": ["Rainbow", "Classic GD", "Monochrome"]
+			"one-of": ["Rainbow", "Counter", "Classic GD", "Monochrome"]
 		},
 		"auto-save": {
 			"type": "bool",
@@ -188,7 +188,7 @@
 			"type": "string",
 			"name": "Frame-Window Display Ranges",
 			"description": "Lower edges of the frame-window ranges shown on the dashboard and histogram, comma separated. Each range includes its lower edge and excludes the next one; the last range is open (e.g. 10+).",
-			"default": "0,1,2,3,4,5,6,8,10"
+			"default": "1, 2, 3, 4, 5, 7, 9, 13, 17"
 		},
 		"title-playback": {
 			"type": "title",
@@ -201,6 +201,21 @@
 			"default": 1.5,
 			"min": 0.0,
 			"max": 60.0
+		},
+		"playback-counter": {
+			"type": "string",
+			"name": "Playback Counter",
+			"description": "Where to show the live counter of how many clicks of each frame-window range have been played. It counts every press that has a window, whatever the marker choice.",
+			"default": "Top left",
+			"one-of": ["Top left", "Top right", "Hidden"]
+		},
+		"playback-counter-scale": {
+			"type": "float",
+			"name": "Playback Counter Size",
+			"description": "Text size of the playback counter.",
+			"default": 0.5,
+			"min": 0.2,
+			"max": 2.0
 		},
 		"title-measurement": {
 			"type": "title",

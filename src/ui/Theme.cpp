@@ -13,7 +13,7 @@ namespace fwa::ui {
 
 namespace {
 
-enum class ThemeKind { Rainbow, Classic, Mono };
+enum class ThemeKind { Rainbow, Counter, Classic, Mono };
 ThemeKind s_theme = ThemeKind::Rainbow;
 bool s_themeLoaded = false;
 
@@ -32,6 +32,12 @@ constexpr std::array<ccColor3B, 9> kRainbow = {{
     {100, 175, 255}, // 6-8
     {125, 125, 255}, // 8-10
     {185, 120, 255}, // 10+
+}};
+
+// Narrowest -> widest: 1 red, 2 orange, 3 yellow, 4 white, 5-6 green, 7-8 light blue, 9+ blue, 13+ purple, 17+ pink.
+constexpr std::array<ccColor3B, 9> kCounter = {{
+    {255, 75, 75}, {255, 165, 60}, {255, 235, 90}, {255, 255, 255}, {110, 230, 110},
+    {110, 195, 255}, {110, 125, 255}, {180, 110, 255}, {255, 125, 235},
 }};
 
 constexpr std::array<ccColor3B, 5> kClassic = {{
@@ -59,7 +65,8 @@ ccColor3B sample(std::array<ccColor3B, N> const& pal, float t) {
 
 void reloadTheme() {
     auto t = Mod::get()->getSettingValue<std::string>("color-theme");
-    s_theme = t == "Classic GD" ? ThemeKind::Classic : t == "Monochrome" ? ThemeKind::Mono : ThemeKind::Rainbow;
+    s_theme = t == "Classic GD" ? ThemeKind::Classic : t == "Monochrome" ? ThemeKind::Mono :
+        t == "Counter" ? ThemeKind::Counter : ThemeKind::Rainbow;
     s_themeLoaded = true;
 }
 
@@ -67,9 +74,11 @@ ccColor3B bucketColor(size_t index, size_t count) {
     ensureTheme();
     if (count == 0) return kText;
     if (s_theme == ThemeKind::Rainbow && count == kRainbow.size()) return kRainbow[std::min(index, count - 1)];
+    if (s_theme == ThemeKind::Counter && count == kCounter.size()) return kCounter[std::min(index, count - 1)];
     float t = count == 1 ? 1.f : static_cast<float>(index) / static_cast<float>(count - 1);
     switch (s_theme) {
         case ThemeKind::Rainbow: return sample(kRainbow, t);
+        case ThemeKind::Counter: return sample(kCounter, t);
         case ThemeKind::Classic: return sample(kClassic, t);
         case ThemeKind::Mono: {
             auto v = static_cast<GLubyte>(110 + 140 * t);
