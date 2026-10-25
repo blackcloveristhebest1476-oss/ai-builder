@@ -13,10 +13,20 @@
 //
 // The level is simulated faster than real time by stepping the game's own
 // update() many times per rendered frame, within a time budget.
+//
+// Fast mode (default) adds three shortcuts, each verified before it is trusted:
+//  - several ticks per update() call (like GD itself at lower FPS); turned off if
+//    GD ever advances a different number of ticks than asked;
+//  - trials restart from a checkpoint taken just before the tested input instead
+//    of the level start, but only after a replay from that checkpoint matched a
+//    full restart exactly (player state on every tick, and the outcome);
+//  - a surviving trial ends as soon as the full player state is back to exactly
+//    the unmodified run's for a few ticks after the moved click.
 
 #include "../core/Analysis.hpp"
 
 #include <Geode/Geode.hpp>
+#include <Geode/binding/CheckpointObject.hpp>
 
 #include <chrono>
 #include <functional>
@@ -54,6 +64,7 @@ public:
         bool tap = false;        // replace the click with a short tap (frame-step style)
         int tapTicks = 1;
         int budgetMs = 14;
+        bool fast = true;        // batching, checkpoint restarts, early convergence exit
         std::vector<size_t> targets; // record indices to measure, chronological
     };
 
@@ -96,7 +107,24 @@ private:
         // really change the outcome from ones GD buffers into the same tick.
         uint64_t traceFrom = 1, traceTo = 0;
         std::vector<double> trace;
+
+        // fast mode
+        geode::Ref<CheckpointObject> restore;      // start from this checkpoint instead of the level start
+        uint64_t restoreFrame = 0;
+        bool restoreFailed = false;
+        uint64_t checkpointFrame = 0;               // take a checkpoint when this tick completes (0 = never)
+        geode::Ref<CheckpointObject> checkpointTaken;
+        uint64_t refFrom = 0;                       // record full player state from this tick (0 = never)
+        std::vector<double> ref;
+        std::vector<double> const* convergeRef = nullptr; // unmodified run's state, from convergeRefFrom
+        uint64_t convergeRefFrom = 0;
+        uint64_t convergeFrom = 0;                  // first tick a convergence may be accepted
+        int convergeStreak = 0;
+        bool converged = false;
+        uint64_t successBy = 0;                     // a death after this tick still counts as survived (0 = off)
     };
+
+    enum class Fast { Untested, Verifying, On, Off };
 
     struct TargetState {
         size_t record = 0;      // record index
@@ -119,11 +147,20 @@ private:
         int trials = 0;
         bool skip = false;      // baseline failed etc.
         std::string skipNote;
+        // fast mode
+        uint64_t cpFrame = 0;   // checkpoint tick (just before the earliest tested timing)
+        geode::Ref<CheckpointObject> checkpoint;
+        Fast fast = Fast::Untested;
+        std::vector<double> ref; // unmodified (shift 0) player state per tick from cpFrame + 1
+        uint64_t refAliveUntil = 0; // the unmodified run is known to survive up to this tick
     };
 
     MeasurementEngine() = default;
     void tick(float dt);
     void beginRun(std::vector<EngineEvent> events, uint64_t endFrame, bool capture);
+    void beginRun(Run spec);
+    void launchTrial(Run spec);
+    void stateInto(GJBaseGameLayer* layer, std::vector<double>& out) const;
     void finishRun();
     void onRunFinished(bool success);
     bool planNextTrial();
@@ -154,6 +191,11 @@ private:
     bool m_currentIsRecheck = false;
     bool m_expectedRecheck = false;
     bool m_currentIsZero = false;
+    bool m_currentIsVerify = false;
+    Run m_runSpec;                       // how the current run was started (for restarts)
+    int m_batch = 8;                     // ticks per update() call in fast mode
+    size_t m_fastOn = 0, m_fastOff = 0;  // targets measured from a checkpoint / from the level start
+    size_t m_converged = 0;              // trials ended early by convergence
     uint64_t m_capFrame = UINT64_MAX;    // trials never run past this (baseline death)
     std::function<void(std::string const&)> m_onFinished;
 

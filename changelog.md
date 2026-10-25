@@ -1,4 +1,5 @@
 # v1.0.0
+- Fast Measurement: trials restart from a verified checkpoint just before the input, surviving trials stop as soon as the movement is back to the original run, and several ticks run per update. All three are verified and fall back automatically (setting to turn it off).
 - Default playback sound "Death Bong": 1-frame clicks play it at normal pitch, wider windows play it higher (adjustable pitch rise per range).
 - Sounds tab: choose a sound (built-in or your own file) for each frame-window range; playback plays it on every click in that range.
 - Live playback counter (top left) showing how many clicks of each range have been played.

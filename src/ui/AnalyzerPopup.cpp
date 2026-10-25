@@ -104,6 +104,7 @@ void startMeasurement(std::vector<size_t> targets) {
         cfg.tap = settings.tap;
         cfg.tapTicks = settings.tapTicks;
         cfg.budgetMs = settings.budgetMs;
+        cfg.fast = settings.fastMeasure;
         cfg.targets = std::move(targets);
         auto err = MeasurementEngine::get()->start(pl, std::move(cfg), [](std::string const& summary) {
             Loader::get()->queueInMainThread([summary] {

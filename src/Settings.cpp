@@ -58,6 +58,7 @@ Settings Settings::load() {
     s.countDistinct = Mod::get()->getSettingValue<std::string>("window-counting") != "Every surviving timing";
     setCountDistinctOutcomes(s.countDistinct);
     s.budgetMs = getI("measure-budget-ms", 14);
+    s.fastMeasure = getB("measure-fast");
     s.theme = Mod::get()->getSettingValue<std::string>("color-theme");
     s.autoSave = getB("auto-save");
     s.background = getB("background-calculation");

@@ -71,6 +71,7 @@ private:
             {"include-lower-bounds", "Use lower-bound windows"},
             {"measure-recheck", "Recheck window edges"},
             {"measure-determinism-check", "Determinism check"},
+            {"measure-fast", "Fast measurement"},
             {"auto-save", "Automatic saving"},
             {"background-calculation", "Background calculation"},
         };
@@ -80,7 +81,7 @@ private:
             auto tg = toggle(menu, this, {290.f, y}, t.text, Mod::get()->getSettingValue<bool>(key),
                 [key](bool v) { Mod::get()->setSettingValue<bool>(key, v); }, .45f);
             m_toggles.push_back({key, tg});
-            y -= 20.f;
+            y -= 18.f;
         }
 
         auto all = button("All Settings...", .4f, 1, [](auto) { openSettingsPopup(Mod::get()); }, 180.f);

@@ -18,6 +18,8 @@ namespace fwa {
 namespace {
 constexpr float kStep = 1.f / 240.f;
 constexpr int kStallLimit = 4000; // update() calls without the tick counter moving
+constexpr int kConvergeTicks = 4;  // identical ticks needed before a trial counts as converged
+constexpr size_t kRefCap = 1u << 21; // doubles of reference state per run (~16 MB max)
 } // namespace
 
 MeasurementEngine* MeasurementEngine::get() {
@@ -142,6 +144,9 @@ std::optional<std::string> MeasurementEngine::start(PlayLayer* pl, Config cfg, s
             t.maxLate = m_cfg.maxShift;
             t.lateBound = "reached the maximum shift setting";
         }
+        // Every tested timing happens after this tick, so a checkpoint here is shared by all trials.
+        t.cpFrame = t.frame > static_cast<uint64_t>(t.maxEarly) + 1 ? t.frame - static_cast<uint64_t>(t.maxEarly) - 1 : 0;
+        if (!m_cfg.fast || t.cpFrame < 2) t.fast = Fast::Off;
         baselineEnd = std::max(baselineEnd, t.frame + static_cast<uint64_t>(t.maxLate) + m_cfg.horizonTicks);
         m_targets.push_back(std::move(t));
     }
@@ -155,6 +160,8 @@ std::optional<std::string> MeasurementEngine::start(PlayLayer* pl, Config cfg, s
     m_ticksSimulated = 0;
     m_secondsSimulating = 0.0;
     m_trialsRun = 0;
+    m_batch = m_cfg.fast ? 8 : 1;
+    m_fastOn = m_fastOff = m_converged = 0;
     m_startedAt = std::chrono::steady_clock::now();
     m_active = true;
     m_phase = Phase::Baseline;
@@ -191,10 +198,17 @@ void MeasurementEngine::cancel(std::string const& reason, bool restartLevel) {
 }
 
 void MeasurementEngine::beginRun(std::vector<EngineEvent> events, uint64_t endFrame, bool capture) {
-    m_run = Run{};
-    m_run.events = std::move(events);
-    m_run.endFrame = std::min(endFrame, m_capFrame);
-    m_run.capture = capture;
+    Run spec;
+    spec.events = std::move(events);
+    spec.endFrame = endFrame;
+    spec.capture = capture;
+    beginRun(std::move(spec));
+}
+
+void MeasurementEngine::beginRun(Run spec) {
+    m_runSpec = spec;
+    m_run = std::move(spec);
+    m_run.endFrame = std::min(m_run.endFrame, m_capFrame);
     // Release every button first: if the previous replay ended mid-hold, GD would carry
     // the held button into the new attempt and change its first jump.
     m_injecting = true;
@@ -204,16 +218,87 @@ void MeasurementEngine::beginRun(std::vector<EngineEvent> events, uint64_t endFr
     m_injecting = false;
     if (m_layer->m_player1) m_layer->m_player1->releaseAllButtons();
     if (m_layer->m_player2) m_layer->m_player2->releaseAllButtons();
+    // Platformer checkpoints (or ours) would make resetLevel() respawn there.
+    auto cps = m_layer->m_checkpointArray;
+    if (cps && cps->count() > 0) m_layer->removeAllCheckpoints();
     m_resetting = true;
-    m_layer->resetLevel();
+    if (m_run.restore && cps) {
+        // GD's own practice-mode respawn: resetLevel() loads the last checkpoint.
+        cps->addObject(m_run.restore.data());
+        bool practice = m_layer->m_isPracticeMode;
+        m_layer->m_isPracticeMode = true;
+        m_layer->resetLevel();
+        m_layer->m_isPracticeMode = practice;
+        cps->removeObject(m_run.restore.data());
+    } else {
+        m_run.restore = nullptr;
+        m_layer->resetLevel();
+    }
     m_resetting = false;
     if (auto fmod = FMODAudioEngine::get()) fmod->pauseAllMusic(true);
-    // resetLevel() should put the tick counter back to 0. If it ever still shows the
-    // previous run's value, wait until it drops before injecting inputs or judging the run.
     m_run.startProgress = m_layer->m_gameState.m_currentProgress;
-    m_run.started = m_run.startProgress <= 1;
     m_run.lastProgress = m_run.startProgress;
+    if (m_run.restore) {
+        // Restored to the checkpoint tick: inputs up to it are already part of the state.
+        m_run.started = m_run.startProgress == m_run.restoreFrame;
+        m_run.restoreFailed = !m_run.started;
+        while (m_run.next < m_run.events.size() && m_run.events[m_run.next].frame <= m_run.restoreFrame) m_run.next++;
+    } else {
+        // resetLevel() should put the tick counter back to 0. If it ever still shows the
+        // previous run's value, wait until it drops before injecting inputs or judging the run.
+        m_run.started = m_run.startProgress <= 1;
+    }
     m_runActive = true;
+}
+
+void MeasurementEngine::launchTrial(Run spec) {
+    auto& t = m_targets[m_current];
+    if (t.fast == Fast::On || m_currentIsVerify) {
+        spec.restore = t.checkpoint;
+        spec.restoreFrame = t.cpFrame;
+    }
+    beginRun(spec);
+    if (m_run.restoreFailed) {
+        log::warn("Frame Window Analyzer: checkpoint restore for input #{} did not land on tick {} (got {}); "
+                  "using full restarts for it", t.record + 1, t.cpFrame, m_run.startProgress);
+        if (t.fast != Fast::Off) m_fastOff++;
+        if (t.fast == Fast::On && m_fastOn > 0) m_fastOn--;
+        t.fast = Fast::Off;
+        t.checkpoint = nullptr;
+        spec.restore = nullptr;
+        if (m_currentIsVerify) {
+            // nothing left to verify: go straight to the search
+            m_currentIsVerify = false;
+            m_runActive = false;
+            return;
+        }
+        beginRun(spec);
+    }
+}
+
+void MeasurementEngine::stateInto(GJBaseGameLayer* layer, std::vector<double>& out) const {
+    out.push_back(layer->m_gameState.m_isDualMode ? 1.0 : 0.0);
+    for (auto p : {layer->m_player1, layer->m_player2}) {
+        if (!p) {
+            out.insert(out.end(), 13, 0.0);
+            continue;
+        }
+        out.push_back(p->m_position.x);
+        out.push_back(p->m_position.y);
+        out.push_back(p->m_yVelocity);
+        out.push_back(p->m_platformerXVelocity);
+        out.push_back(p->getRotation());
+        out.push_back(p->m_playerSpeed);
+        out.push_back(p->m_gravityMod);
+        out.push_back(p->m_vehicleSize);
+        out.push_back(p->m_isUpsideDown ? 1.0 : 0.0);
+        out.push_back(p->m_isOnGround ? 1.0 : 0.0);
+        out.push_back(p->m_isDashing ? 1.0 : 0.0);
+        out.push_back(p->m_isSideways ? 1.0 : 0.0);
+        int mode = p->m_isShip | p->m_isBird << 1 | p->m_isBall << 2 | p->m_isDart << 3 | p->m_isRobot << 4 |
+            p->m_isSpider << 5 | p->m_isSwing << 6;
+        out.push_back(mode);
+    }
 }
 
 std::string MeasurementEngine::modeName(PlayerObject* p) const {
@@ -250,6 +335,23 @@ void MeasurementEngine::onProcessCommands(GJBaseGameLayer* layer) {
             m_run.trace.push_back(p->m_position.x);
             m_run.trace.push_back(p->m_position.y);
             m_run.trace.push_back(p->m_yVelocity);
+        }
+    }
+    if ((m_run.refFrom && frame >= m_run.refFrom && m_run.ref.size() < kRefCap) ||
+        (m_run.convergeRef && !m_run.converged && frame >= m_run.convergeFrom)) {
+        thread_local std::vector<double> state;
+        state.clear();
+        stateInto(layer, state);
+        if (m_run.refFrom && frame >= m_run.refFrom && m_run.ref.size() < kRefCap) {
+            m_run.ref.insert(m_run.ref.end(), state.begin(), state.end());
+        }
+        if (m_run.convergeRef && !m_run.converged && frame >= m_run.convergeFrom && frame >= m_run.convergeRefFrom) {
+            size_t at = static_cast<size_t>(frame - m_run.convergeRefFrom) * state.size();
+            auto const& ref = *m_run.convergeRef;
+            bool same = at + state.size() <= ref.size() && std::equal(state.begin(), state.end(), ref.begin() + at);
+            m_run.convergeStreak = same ? m_run.convergeStreak + 1 : 0;
+            // Back to exactly the unmodified run (which survived): the rest plays out the same.
+            if (m_run.convergeStreak >= kConvergeTicks) m_run.converged = true;
         }
     }
     if (m_run.capture) {
@@ -305,12 +407,34 @@ void MeasurementEngine::tick(float) {
             }
             continue;
         }
+        uint64_t before = m_layer->m_gameState.m_currentProgress;
+        int steps = 1;
+        if (m_batch > 1 && m_run.started) {
+            // Several ticks per update(), like GD at a lower frame rate; never past a
+            // point that must be seen between ticks (run end, checkpoint tick).
+            uint64_t n = static_cast<uint64_t>(m_batch);
+            if (m_run.endFrame > before) n = std::min(n, m_run.endFrame - before);
+            if (m_run.checkpointFrame > before && !m_run.checkpointTaken) n = std::min(n, m_run.checkpointFrame - before);
+            steps = static_cast<int>(std::max<uint64_t>(1, n));
+        }
         m_driving = true;
-        m_layer->update(kStep);
+        m_layer->update(kStep * static_cast<float>(steps));
         m_driving = false;
 
         uint64_t progress = m_layer->m_gameState.m_currentProgress;
+        if (steps > 1 && progress > before && progress != before + static_cast<uint64_t>(steps)) {
+            // GD did not split the update into `steps` ticks of 1/240 s: stop batching and
+            // redo this run one tick per update, so no result depends on it.
+            log::warn("Frame Window Analyzer: asked for {} ticks, GD advanced {}; batching off", steps, progress - before);
+            m_batch = 1;
+            beginRun(m_runSpec);
+            continue;
+        }
         if (!m_run.started && progress < m_run.startProgress) m_run.started = true;
+        if (m_run.started && m_run.checkpointFrame && !m_run.checkpointTaken && progress == m_run.checkpointFrame &&
+            !m_run.died) {
+            m_run.checkpointTaken = m_layer->createCheckpoint();
+        }
         if (progress != m_run.lastProgress) {
             if (progress > m_run.lastProgress) m_ticksSimulated += progress - m_run.lastProgress;
             m_run.lastProgress = progress;
@@ -321,9 +445,12 @@ void MeasurementEngine::tick(float) {
         }
         if (!m_run.started) continue;
 
-        if (m_run.died) onRunFinished(false);
+        if (m_run.died) onRunFinished(m_run.successBy && m_run.deathFrame > m_run.successBy);
         else if (m_run.levelEnded) onRunFinished(true);
-        else if (progress >= m_run.endFrame) onRunFinished(true);
+        else if (m_run.converged) {
+            m_converged++;
+            onRunFinished(true);
+        } else if (progress >= m_run.endFrame) onRunFinished(true);
     }
     m_secondsSimulating += std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
     if (m_active) updateHud();
@@ -417,12 +544,40 @@ void MeasurementEngine::onRunFinished(bool success) {
         }
         case Phase::Search: {
             auto& t = m_targets[m_current];
+            if (m_currentIsVerify) {
+                // Same timing as the zero trial, but from the checkpoint: it must match exactly.
+                m_currentIsVerify = false;
+                bool same = success && !m_run.ref.empty() && m_run.ref == t.ref;
+                if (same) {
+                    t.fast = Fast::On;
+                    m_fastOn++;
+                } else {
+                    log::info("Frame Window Analyzer: checkpoint replay of input #{} differs from a full restart; "
+                              "using full restarts for it", t.record + 1);
+                    t.fast = Fast::Off;
+                    t.checkpoint = nullptr;
+                    m_fastOff++;
+                }
+                return;
+            }
             t.trials++;
             if (success && !m_currentIsRecheck) t.traces[m_currentShift] = std::move(m_run.trace);
             if (!m_currentIsRecheck) t.log[m_currentShift] = success ? -1.0 : m_run.deathFrame / 240.0;
             if (m_currentIsZero) {
                 m_currentIsZero = false;
                 t.zeroDone = true;
+                if (success && m_cfg.fast) {
+                    t.ref = std::move(m_run.ref);
+                    t.refAliveUntil = m_run.levelEnded ? UINT64_MAX
+                        : m_run.died ? m_run.deathFrame - 1 : m_run.lastProgress;
+                    if (t.fast == Fast::Untested && m_run.checkpointTaken && t.ref.size() < kRefCap) {
+                        t.checkpoint = m_run.checkpointTaken;
+                        t.fast = Fast::Verifying;
+                    } else if (t.fast == Fast::Untested) {
+                        t.fast = Fast::Off;
+                        m_fastOff++;
+                    }
+                }
                 if (!success) {
                     t.skip = true;
                     t.skipNote = m_cfg.tap
@@ -472,6 +627,13 @@ bool MeasurementEngine::planNextTrial() {
             startTrial(0);
             return true;
         }
+        if (t.fast == Fast::Verifying) {
+            m_currentIsRecheck = false;
+            m_currentIsVerify = true;
+            startTrial(0);
+            if (!m_runActive) continue; // restore failed; already switched to full restarts
+            return true;
+        }
         bool early = t.side == Side::Early;
         bool failed = early ? t.earlyFailed : t.lateFailed;
         bool& queued = early ? t.earlyRecheckQueued : t.lateRecheckQueued;
@@ -504,6 +666,9 @@ bool MeasurementEngine::planNextTrial() {
             t.d = 1;
             continue;
         }
+        t.checkpoint = nullptr; // free the saved level state
+        t.ref.clear();
+        t.ref.shrink_to_fit();
         m_current++;
     }
     return false;
@@ -532,13 +697,40 @@ void MeasurementEngine::startTrial(int shift) {
     }
     std::stable_sort(events.begin(), events.end(), [](auto const& x, auto const& y) { return x.frame < y.frame; });
     uint64_t end = std::max<uint64_t>(t.frame, static_cast<uint64_t>(std::max<int64_t>(0, moved))) + m_cfg.horizonTicks;
+    uint64_t lastMoved = 0;
+    for (auto const& e : events) {
+        // the moved press, its release, or the release added for a tap (same record index)
+        if (e.recordIndex == m_events[t.eventIndex].recordIndex ||
+            (t.pairIndex && e.recordIndex == m_events[*t.pairIndex].recordIndex)) {
+            lastMoved = std::max(lastMoved, e.frame);
+        }
+    }
     m_currentShift = shift;
-    m_trialsRun++;
-    beginRun(std::move(events), end, false);
-    // Trace the movement from just before the earliest tested timing to a few ticks after the latest.
-    int64_t from = static_cast<int64_t>(t.frame) - t.maxEarly - 1;
-    m_run.traceFrom = static_cast<uint64_t>(std::max<int64_t>(0, from));
-    m_run.traceTo = t.frame + static_cast<uint64_t>(t.maxLate) + 6;
+    if (!m_currentIsVerify) m_trialsRun++;
+
+    Run spec;
+    spec.events = std::move(events);
+    spec.endFrame = end;
+    spec.capture = false;
+    // Trace the movement from the earliest tested timing to a few ticks after the latest.
+    spec.traceFrom = t.cpFrame + 1;
+    spec.traceTo = t.frame + static_cast<uint64_t>(t.maxLate) + 6;
+    if (m_cfg.fast) {
+        if (m_currentIsZero || m_currentIsVerify) {
+            // Record the unmodified run past its own horizon, as far as the latest late trial
+            // reaches, so a converged trial is only accepted where this run is known to survive.
+            spec.successBy = end;
+            spec.endFrame = std::max(end, t.frame + static_cast<uint64_t>(t.maxLate) + m_cfg.horizonTicks);
+            spec.refFrom = t.cpFrame + 1;
+            if (m_currentIsZero && t.fast == Fast::Untested) spec.checkpointFrame = t.cpFrame;
+        } else if (!t.ref.empty() && t.refAliveUntil >= std::min(end, m_capFrame)) {
+            spec.convergeRef = &t.ref;
+            spec.convergeRefFrom = t.cpFrame + 1;
+            // only after both moved events and the traced range, so traces stay comparable
+            spec.convergeFrom = std::max(lastMoved, m_currentIsRecheck ? lastMoved : spec.traceTo) + 1;
+        }
+    }
+    launchTrial(std::move(spec));
 }
 
 void MeasurementEngine::finalize(bool cancelled, std::string const& reason) {
@@ -648,6 +840,10 @@ void MeasurementEngine::finalize(bool cancelled, std::string const& reason) {
         }
         m_cbfTouched = false;
     }
+    for (auto& t : m_targets) t.checkpoint = nullptr;
+    if (m_layer && m_layer->m_checkpointArray && m_layer->m_checkpointArray->count() > 0 && !m_layer->m_isPracticeMode) {
+        m_layer->removeAllCheckpoints();
+    }
     if (m_layer && !m_skipFinalReset) m_layer->resetLevel(); // engine is inactive now, so this is a normal restart
     m_layer = nullptr;
 
@@ -655,7 +851,9 @@ void MeasurementEngine::finalize(bool cancelled, std::string const& reason) {
     std::string summary = (cancelled ? "Measurement stopped. " + reason + "\n\n" : "Measurement finished in " + formatDuration(elapsed) + ".\n\n") +
         std::to_string(verified) + " verified, " + std::to_string(lower) + " lower bound, " +
         std::to_string(inconsistent) + " inconsistent, " + std::to_string(baselineFailed) + " not measurable" +
-        (incomplete ? ", " + std::to_string(incomplete) + " not reached" : "") + " (" + std::to_string(m_trialsRun) + " trials).";
+        (incomplete ? ", " + std::to_string(incomplete) + " not reached" : "") + " (" + std::to_string(m_trialsRun) + " trials)." +
+        (m_cfg.fast ? "\nFast mode: " + std::to_string(m_fastOn) + " input(s) from a verified checkpoint, " +
+            std::to_string(m_fastOff) + " from the level start; " + std::to_string(m_converged) + " trial(s) ended early." : "");
     session.setMessage(summary);
     session.touch();
     if (Settings::load().autoSave && (verified + lower + inconsistent) > 0) session.autoSave("measurement");
@@ -693,7 +891,7 @@ void MeasurementEngine::updateHud() {
         text = "Measuring input " + std::to_string(done + 1 > total ? total : done + 1) + "/" + std::to_string(total) +
             " (#" + std::to_string(t.record + 1) + ", shift " + (m_currentShift > 0 ? "+" : "") + std::to_string(m_currentShift) + ")  -  " +
             std::to_string(static_cast<int>(100.0 * done / total)) + "%  -  ETA ~" + formatDuration(eta) +
-            "  -  " + num(rate / 240.0, 1) + "x speed  -  Esc to stop";
+            "  -  " + num(rate / 240.0, 1) + "x speed" + (t.fast == Fast::On ? " (checkpoint)" : "") + "  -  Esc to stop";
     } else {
         text = m_status + "  -  " + num(rate / 240.0, 1) + "x speed  -  Esc to stop";
     }

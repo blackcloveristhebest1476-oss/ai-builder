@@ -284,6 +284,12 @@
 			"description": "Replay the unmodified macro twice before measuring and compare player positions at every input. Measurement stops if the two runs differ, because results would not be reliable.",
 			"default": true
 		},
+		"measure-fast": {
+			"type": "bool",
+			"name": "Fast Measurement",
+			"description": "Much faster measuring. Trials restart from a checkpoint just before the input instead of the level start (only after a replay from that checkpoint matched a full restart exactly), a surviving trial stops as soon as the player's movement is back to exactly the original run's, and several ticks are simulated per game update. Every shortcut is checked and switches itself off if it does not match. Turn this off to replay every trial from the start of the level like before.",
+			"default": true
+		},
 		"measure-budget-ms": {
 			"type": "int",
 			"name": "Simulation Time per Frame (ms)",

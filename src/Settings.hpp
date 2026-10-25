@@ -35,6 +35,7 @@ struct Settings {
     int tapTicks = 1;
     bool countDistinct = true;
     int budgetMs = 14;
+    bool fastMeasure = true;
     std::string theme = "Rainbow";
     bool autoSave = true;
     bool background = true;

@@ -46,6 +46,11 @@ Geode cannot rewind GD's physics, and GD's practice checkpoints are not guarante
 4. **Distinct outcomes**: every trial records the player's movement around the input. Timings whose movement is identical (GD buffered the click into the same tick, e.g. pressing just before touching an orb) are counted once by default, so the window matches what a frame-step tool shows; the raw early/late room is still shown.
 5. **Edge recheck** (optional, on by default): the last surviving and first failing shift on each side are run once more; a disagreement marks the input *Inconsistent*.
 
+**Fast Measurement** (on by default) adds three shortcuts. Each one is checked before it is trusted and switches itself off when the check fails:
+- *Checkpoint restarts*: the replay of the original timing also saves a GD checkpoint just before the earliest tested timing. The same timing is replayed once more from that checkpoint. Only if the full player state (position, velocity, rotation, mode, gravity, speed…) matches the full restart on every tick, with the same outcome, are the remaining trials for that input started from the checkpoint instead of the level start.
+- *Early finish*: a surviving trial stops once the full player state has been exactly identical to the unmodified run's for 4 ticks after the moved click, and only where the unmodified run is known to survive past that trial's horizon.
+- *Batched ticks*: several 1/240 s ticks per GD update (what GD itself does at lower frame rates). If GD ever advances a different number of ticks than asked, batching turns off and that run is redone.
+
 The level is simulated faster than real time by stepping GD's own update many times per rendered frame (time budget setting). Long levels with many inputs take a while — the HUD shows progress, speed and an ETA; **Esc stops** and keeps everything finished so far. Measure a range (e.g. `120-180`) to focus on a hard part.
 
 While measuring: your inputs are ignored, deaths and completions are intercepted (nothing is saved as progress or a completion), Click Between Frames is soft-toggled off and restored afterwards.
