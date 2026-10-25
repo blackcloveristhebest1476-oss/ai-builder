@@ -58,6 +58,7 @@ private:
         bool lowerBound = false;
         std::optional<size_t> bucket; // counter range for presses with a window
         std::string sound;            // sound to play for this press ("" = none)
+        float pitch = 1.f;            // pitch multiplier for that sound
     };
 
     PlaybackEngine() = default;

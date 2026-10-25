@@ -91,6 +91,7 @@ std::optional<std::string> PlaybackEngine::start(PlayLayer* pl, MarkerMode mode,
             if (auto w = windowFrames(r, s.windowFps, a.tps, true)) {
                 ev.bucket = bucketIndex(*w, m_edges);
                 ev.sound = rangeSounds[*ev.bucket];
+                ev.pitch = sounds::pitchForBucket(*ev.bucket);
             }
         }
         m_events.push_back(ev);
@@ -205,7 +206,7 @@ void PlaybackEngine::onProcessCommands(GJBaseGameLayer* layer) {
         if (ev.bucket && *ev.bucket < m_counts.size()) {
             m_counts[*ev.bucket]++;
             updateCounter();
-            sounds::play(ev.sound);
+            sounds::play(ev.sound, ev.pitch);
         }
         if (ev.markFrames) {
             bool twoPlayer = layer->m_levelSettings && layer->m_levelSettings->m_twoPlayerMode;

@@ -1,4 +1,5 @@
 # v1.0.0
+- Default playback sound "Death Bong": 1-frame clicks play it at normal pitch, wider windows play it higher (adjustable pitch rise per range).
 - Sounds tab: choose a sound (built-in or your own file) for each frame-window range; playback plays it on every click in that range.
 - Live playback counter (top left) showing how many clicks of each range have been played.
 - New "Counter" color theme and integer range labels (1, 2, 3, 4, 5-6, 7-8, 9-12, 13-16, 17+), now the default ranges; Settings → Counter Style applies both.

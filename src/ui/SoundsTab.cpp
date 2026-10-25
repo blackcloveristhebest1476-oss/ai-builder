@@ -30,6 +30,7 @@ public:
     void refresh() override {
         m_enabled->toggle(sounds::enabled());
         m_volumeLabel->setString(fmt::format("{}%", static_cast<int>(std::round(sounds::volume() * 100))).c_str());
+        updatePitchLabel();
         rebuildRows();
     }
 
@@ -40,6 +41,7 @@ private:
     CCMenuItemToggler* m_enabled = nullptr;
     CCLabelBMFont* m_volumeLabel = nullptr;
     CCLabelBMFont* m_pageLabel = nullptr;
+    CCLabelBMFont* m_pitchLabel = nullptr;
     int m_page = 0;
     geode::async::TaskHolder<file::PickResult> m_pick;
 
@@ -71,11 +73,26 @@ private:
         plus->setPosition({380.f, top});
         m_menu->addChild(plus);
 
-        auto hint = label("Each frame-window range can play a sound when one of its clicks is played back.",
-            "chat", .45f, kMuted);
-        hint->setPosition({10.f, top - 17.f});
-        hint->limitLabelWidth(size.width - 20.f, .45f, .2f);
-        this->addChild(hint);
+        float row2 = top - 18.f;
+        auto pitch = label("Pitch rise per range", "big", .3f, kText);
+        pitch->setPosition({14.f, row2});
+        this->addChild(pitch);
+        auto pMinus = button("-", .38f, 2, [this](auto) { changePitch(-.5f); }, 30.f);
+        pMinus->setPosition({150.f, row2});
+        m_menu->addChild(pMinus);
+        m_pitchLabel = label("", "big", .3f, kAccent, {.5f, .5f});
+        m_pitchLabel->setPosition({200.f, row2});
+        this->addChild(m_pitchLabel);
+        auto pPlus = button("+", .38f, 2, [this](auto) { changePitch(.5f); }, 30.f);
+        pPlus->setPosition({250.f, row2});
+        m_menu->addChild(pPlus);
+        auto all = button("All Default", .34f, 1, [this](auto) {
+            for (double e : Settings::load().stats().edges) sounds::setSoundForEdge(e, sounds::kDefaultSound);
+            defer(this, [this] { rebuildRows(); });
+        }, 140.f);
+        all->setPosition({345.f, row2});
+        m_menu->addChild(all);
+        updatePitchLabel();
 
         auto prev = CCMenuItemExt::createSpriteExtraWithFrameName("GJ_arrow_03_001.png", .3f, [this](auto) { changePage(-1); });
         prev->setPosition({190.f, 9.f});
@@ -95,6 +112,18 @@ private:
         m_volumeLabel->setString(fmt::format("{}%", static_cast<int>(std::round(sounds::volume() * 100))).c_str());
     }
 
+    void updatePitchLabel() {
+        m_pitchLabel->setString(fmt::format("{} st", num(sounds::pitchStep(), 1)).c_str());
+    }
+
+    void changePitch(float delta) {
+        sounds::setPitchStep(sounds::pitchStep() + delta);
+        updatePitchLabel();
+        // Let the user hear the new spread: narrowest and widest range.
+        auto edges = Settings::load().stats().edges;
+        if (!edges.empty()) sounds::play(sounds::soundForEdge(edges.back()), sounds::pitchForBucket(edges.size() - 1));
+    }
+
     void changePage(int delta) {
         auto edges = Settings::load().stats().edges;
         int pages = std::max(1, static_cast<int>((edges.size() + kRowsPerPage - 1) / kRowsPerPage));
@@ -109,21 +138,21 @@ private:
         return out;
     }
 
-    void cycle(double edge, int dir) {
+    void cycle(double edge, size_t bucket, int dir) {
         auto list = choices();
         auto current = sounds::soundForEdge(edge);
         auto it = std::find(list.begin(), list.end(), current);
         int idx = it == list.end() ? 0 : static_cast<int>(it - list.begin());
         idx = (idx + dir + static_cast<int>(list.size())) % static_cast<int>(list.size());
         sounds::setSoundForEdge(edge, list[idx]);
-        sounds::play(list[idx]);
+        sounds::play(list[idx], sounds::pitchForBucket(bucket));
         defer(this, [this] { rebuildRows(); });
     }
 
-    void pickCustom(double edge) {
+    void pickCustom(double edge, size_t bucket) {
         file::FilePickOptions opts;
         opts.filters.push_back({"Audio", {"*.ogg", "*.mp3", "*.wav"}});
-        m_pick.spawn(file::pick(file::PickMode::OpenFile, opts), [this, edge](file::PickResult res) {
+        m_pick.spawn(file::pick(file::PickMode::OpenFile, opts), [this, edge, bucket](file::PickResult res) {
             if (!res) {
                 FLAlertLayer::create("Sound", "The file picker failed: " + std::string(res.unwrapErr()), "OK")->show();
                 return;
@@ -132,7 +161,7 @@ private:
             if (!picked) return;
             auto path = utils::string::pathToString(*picked);
             sounds::setSoundForEdge(edge, path);
-            sounds::play(path);
+            sounds::play(path, sounds::pitchForBucket(bucket));
             rebuildRows();
         });
     }
@@ -149,7 +178,7 @@ private:
         m_page = std::clamp(m_page, 0, pages - 1);
         m_pageLabel->setString(fmt::format("Page {}/{}", m_page + 1, pages).c_str());
 
-        float y = m_size.height - 50.f;
+        float y = m_size.height - 52.f;
         float rowH = 14.5f;
         // Narrowest ranges first: they are the ones most worth hearing.
         for (int i = 0; i < kRowsPerPage; i++) {
@@ -167,16 +196,16 @@ private:
             sound->limitLabelWidth(110.f, .55f, .25f);
             m_rows->addChild(sound);
 
-            auto left = button("<", .34f, 2, [this, edge](auto) { cycle(edge, -1); }, 30.f);
+            auto left = button("<", .34f, 2, [this, edge, bucket](auto) { cycle(edge, bucket, -1); }, 30.f);
             left->setPosition({120.f, y});
             m_rowMenu->addChild(left);
-            auto right = button(">", .34f, 2, [this, edge](auto) { cycle(edge, 1); }, 30.f);
+            auto right = button(">", .34f, 2, [this, edge, bucket](auto) { cycle(edge, bucket, 1); }, 30.f);
             right->setPosition({260.f, y});
             m_rowMenu->addChild(right);
-            auto custom = button("File...", .34f, 1, [this, edge](auto) { pickCustom(edge); }, 90.f);
+            auto custom = button("File...", .34f, 1, [this, edge, bucket](auto) { pickCustom(edge, bucket); }, 90.f);
             custom->setPosition({310.f, y});
             m_rowMenu->addChild(custom);
-            auto test = button("Test", .34f, 0, [current](auto) { sounds::play(current); }, 70.f);
+            auto test = button("Test", .34f, 0, [current, bucket](auto) { sounds::play(current, sounds::pitchForBucket(bucket)); }, 70.f);
             test->setPosition({360.f, y});
             m_rowMenu->addChild(test);
             auto clear = button("x", .34f, 3, [this, edge](auto) {

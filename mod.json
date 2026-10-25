@@ -10,7 +10,11 @@
 	"version": "v1.0.0",
 	"developer": "alexl",
 	"description": "Import a macro, measure how many frames early or late each click can be, and estimate NaNDL precision.",
-	"tags": ["utility", "gameplay", "interface"],
+	"tags": [
+		"utility",
+		"gameplay",
+		"interface"
+	],
 	"dependencies": {
 		"geode.node-ids": ">=v1.23.3"
 	},
@@ -31,7 +35,12 @@
 			"name": "Color Theme",
 			"description": "Colors used for frame-window ranges in the dashboard, table and graphs.",
 			"default": "Rainbow",
-			"one-of": ["Rainbow", "Counter", "Classic GD", "Monochrome"]
+			"one-of": [
+				"Rainbow",
+				"Counter",
+				"Classic GD",
+				"Monochrome"
+			]
 		},
 		"auto-save": {
 			"type": "bool",
@@ -134,7 +143,7 @@
 			"name": "Solver Tolerance (s)",
 			"description": "The solver stops when the expected completion time is within this many seconds of the target. NaNDL default: 1.",
 			"default": 1.0,
-			"min": 0.000000001,
+			"min": 1e-09,
 			"max": 1000000.0
 		},
 		"solver-max-iterations": {
@@ -160,7 +169,10 @@
 			"name": "Window Counting",
 			"description": "<cy>Distinct outcomes</c> (default): timings that produce exactly the same movement count once. GD buffers a click made just before touching an orb (or landing), so pressing a few ticks early can give the identical jump; those count as one timing, like a frame-step tool sees it.\n<cy>Every surviving timing</c>: every tick you could press on and survive counts, including buffered ones (the room a human actually has).",
 			"default": "Distinct outcomes",
-			"one-of": ["Distinct outcomes", "Every surviving timing"]
+			"one-of": [
+				"Distinct outcomes",
+				"Every surviving timing"
+			]
 		},
 		"include-lower-bounds": {
 			"type": "bool",
@@ -207,7 +219,11 @@
 			"name": "Playback Counter",
 			"description": "Where to show the live counter of how many clicks of each frame-window range have been played. It counts every press that has a window, whatever the marker choice.",
 			"default": "Top left",
-			"one-of": ["Top left", "Top right", "Hidden"]
+			"one-of": [
+				"Top left",
+				"Top right",
+				"Hidden"
+			]
 		},
 		"playback-counter-scale": {
 			"type": "float",
@@ -234,7 +250,11 @@
 			"name": "Shift Mode",
 			"description": "<cy>Whole click</c>: a press is moved together with its own release, keeping how long you held it. Held clicks are buffered by GD (e.g. holding into an orb or a landing activates it on contact), so early presses that are still held count.\n<cy>Tap (frame-step style)</c>: the click is replaced by a short tap (Tap Length) and moved tick by tick, exactly like checking each tick with a frame stepper and trajectory guide.\n<cy>Press only</c>: only the press moves; the release stays.",
 			"default": "Whole click",
-			"one-of": ["Whole click", "Tap (frame-step style)", "Press only"]
+			"one-of": [
+				"Whole click",
+				"Tap (frame-step style)",
+				"Press only"
+			]
 		},
 		"measure-tap-ticks": {
 			"type": "int",
@@ -272,5 +292,10 @@
 			"min": 2,
 			"max": 200
 		}
+	},
+	"resources": {
+		"files": [
+			"resources/*.ogg"
+		]
 	}
 }
