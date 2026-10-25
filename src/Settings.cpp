@@ -51,7 +51,10 @@ Settings Settings::load() {
     s.horizonSeconds = getD("measure-horizon", 1.5);
     s.recheck = getB("measure-recheck");
     s.determinismCheck = getB("measure-determinism-check");
-    s.wholeClick = Mod::get()->getSettingValue<std::string>("measure-shift-mode") != "Press only";
+    auto mode = Mod::get()->getSettingValue<std::string>("measure-shift-mode");
+    s.wholeClick = mode != "Press only";
+    s.tap = mode.rfind("Tap", 0) == 0;
+    s.tapTicks = getI("measure-tap-ticks", 1);
     s.budgetMs = getI("measure-budget-ms", 14);
     s.theme = Mod::get()->getSettingValue<std::string>("color-theme");
     s.autoSave = getB("auto-save");

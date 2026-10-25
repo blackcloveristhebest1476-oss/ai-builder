@@ -31,6 +31,8 @@ struct Settings {
     bool recheck = true;
     bool determinismCheck = true;
     bool wholeClick = true;
+    bool tap = false;
+    int tapTicks = 1;
     int budgetMs = 14;
     std::string theme = "Rainbow";
     bool autoSave = true;

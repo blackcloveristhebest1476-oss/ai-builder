@@ -51,6 +51,8 @@ public:
         bool recheck = true;
         bool determinism = true;
         bool wholeClick = true;  // move a press together with its release
+        bool tap = false;        // replace the click with a short tap (frame-step style)
+        int tapTicks = 1;
         int budgetMs = 14;
         std::vector<size_t> targets; // record indices to measure, chronological
     };
@@ -106,6 +108,7 @@ private:
         // recheck queue: shifts to re-run with their expected outcome
         std::vector<std::pair<int, bool>> rechecks;
         bool earlyRecheckQueued = false, lateRecheckQueued = false;
+        bool zeroDone = false;  // tap mode: the tap at the original tick has been checked
         bool inconsistent = false;
         int trials = 0;
         bool skip = false;      // baseline failed etc.
@@ -144,6 +147,7 @@ private:
     int m_currentShift = 0;
     bool m_currentIsRecheck = false;
     bool m_expectedRecheck = false;
+    bool m_currentIsZero = false;
     uint64_t m_capFrame = UINT64_MAX;    // trials never run past this (baseline death)
     std::function<void(std::string const&)> m_onFinished;
 

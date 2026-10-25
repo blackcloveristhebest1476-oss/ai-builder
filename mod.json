@@ -210,9 +210,17 @@
 		"measure-shift-mode": {
 			"type": "string",
 			"name": "Shift Mode",
-			"description": "<cy>Whole click</c> (recommended): a press is moved together with its own release, like a real click. <cy>Press only</c>: only the press moves and the release stays, which means holding longer; in GD 2.2 holding through a landing jumps on the exact landing tick, so this can make tight clicks look much more forgiving than they are.",
+			"description": "<cy>Whole click</c>: a press is moved together with its own release, keeping how long you held it. Held clicks are buffered by GD (e.g. holding into an orb or a landing activates it on contact), so early presses that are still held count.\n<cy>Tap (frame-step style)</c>: the click is replaced by a short tap (Tap Length) and moved tick by tick, exactly like checking each tick with a frame stepper and trajectory guide.\n<cy>Press only</c>: only the press moves; the release stays.",
 			"default": "Whole click",
-			"one-of": ["Whole click", "Press only"]
+			"one-of": ["Whole click", "Tap (frame-step style)", "Press only"]
+		},
+		"measure-tap-ticks": {
+			"type": "int",
+			"name": "Tap Length (ticks)",
+			"description": "How long the button is held in Tap mode (1 tick = 1/240 s). 1 matches a frame-step tool.",
+			"default": 1,
+			"min": 1,
+			"max": 60
 		},
 		"measure-horizon": {
 			"type": "float",

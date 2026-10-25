@@ -48,6 +48,7 @@ private:
         std::optional<double> markFrames; // window to display, if this press is marked
         cocos2d::ccColor3B color{255, 255, 255};
         std::string split; // "-early +late" ticks for measured inputs
+        bool lowerBound = false;
     };
 
     PlaybackEngine() = default;

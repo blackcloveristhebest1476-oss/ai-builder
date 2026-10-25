@@ -127,7 +127,8 @@ Everything is in the mod's settings (each has an explanation) and the **Settings
 | Frame-Perfect / Tight thresholds | 1 / 2 frames | |
 | Display Ranges | 0,1,2,3,4,5,6,8,10 | Buckets `[edge, next)`, last is open (10+) |
 | Marker Duration | 1.5 s | How long each playback ring stays (0 = until restart) |
-| Shift Mode | Whole click | Move a press together with its release (recommended) or only the press |
+| Shift Mode | Whole click | *Whole click* keeps your hold length (GD buffers held clicks into orbs/landings); *Tap* replaces the click with a short tap like a frame-step tool; *Press only* moves just the press |
+| Tap Length | 1 tick | Hold length used in Tap mode |
 | Max Shift / Horizon / Recheck / Determinism | 24 ticks / 1.5 s / on / on | Measurement |
 | Simulation Time per Frame | 14 ms | Speed vs responsiveness |
 | Color Theme, Automatic Saving, Background Calculation | Rainbow / on / on | |

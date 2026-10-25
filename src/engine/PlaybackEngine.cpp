@@ -70,6 +70,7 @@ std::optional<std::string> PlaybackEngine::start(PlayLayer* pl, MarkerMode mode)
         ev.player2 = r.player2;
         ev.down = r.down;
         ev.markFrames = markedWindow(r, s, a.tps, mode);
+        ev.lowerBound = r.window.status == WindowStatus::LowerBound;
         if (ev.markFrames && isMeasured(r.window.status)) {
             ev.split = "-" + std::to_string(r.window.earlyTicks) + (r.window.earlyLimited ? "+" : "") + " / +" +
                 std::to_string(r.window.lateTicks) + (r.window.lateLimited ? "+" : "");
@@ -167,7 +168,7 @@ void PlaybackEngine::spawnMarker(GJBaseGameLayer* layer, PlayerObject* player, E
     ring->drawCircle({0.f, 0.f}, 18.f, {0.f, 0.f, 0.f, 0.f}, 2.6f, ui::toColor4F(ev.color, 1.f), 48);
     node->addChild(ring);
 
-    auto text = num(*ev.markFrames, 2);
+    auto text = (ev.lowerBound ? ">=" : "") + num(*ev.markFrames, 2);
     auto shadow = CCLabelBMFont::create(text.c_str(), "bigFont.fnt");
     shadow->setScale(.62f);
     shadow->setColor({0, 0, 0});
@@ -187,7 +188,7 @@ void PlaybackEngine::spawnMarker(GJBaseGameLayer* layer, PlayerObject* player, E
         auto split = CCLabelBMFont::create(ev.split.c_str(), "chatFont.fnt");
         split->setScale(.55f);
         split->setColor(ev.color);
-        split->setPosition({0.f, -27.f});
+        split->setPosition({0.f, 27.f});
         node->addChild(split);
     }
 

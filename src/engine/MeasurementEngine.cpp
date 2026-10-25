@@ -109,7 +109,7 @@ std::optional<std::string> MeasurementEngine::start(PlayLayer* pl, Config cfg, s
         }
         // Whole-click mode: a press moves together with its own release (a real click is
         // press + release), so holding the button longer can't hide a tight timing.
-        if (m_cfg.wholeClick && ev.down) {
+        if ((m_cfg.wholeClick || m_cfg.tap) && ev.down) {
             for (size_t j = t.eventIndex + 1; j < m_events.size(); j++) {
                 if (m_events[j].player2 == ev.player2 && m_events[j].button == ev.button) {
                     if (!m_events[j].down) {
@@ -127,7 +127,8 @@ std::optional<std::string> MeasurementEngine::start(PlayLayer* pl, Config cfg, s
                 }
             }
         }
-        uint64_t lateFrom = t.pairIndex ? m_events[*t.pairIndex].frame : ev.frame;
+        uint64_t lateFrom = m_cfg.tap && ev.down ? ev.frame + static_cast<uint64_t>(std::max(1, m_cfg.tapTicks))
+            : t.pairIndex ? m_events[*t.pairIndex].frame : ev.frame;
         if (nextFrame) {
             int64_t lateRoom = std::max<int64_t>(static_cast<int64_t>(*nextFrame) - static_cast<int64_t>(lateFrom) - 1, 0);
             if (lateRoom < m_cfg.maxShift) {
@@ -400,6 +401,17 @@ void MeasurementEngine::onRunFinished(bool success) {
         case Phase::Search: {
             auto& t = m_targets[m_current];
             t.trials++;
+            if (m_currentIsZero) {
+                m_currentIsZero = false;
+                t.zeroDone = true;
+                if (!success) {
+                    t.skip = true;
+                    t.skipNote = "A " + std::to_string(std::max(1, m_cfg.tapTicks)) + "-tick tap on the original tick dies here: this "
+                        "input needs the button held (e.g. a held jump or a hold mechanic), so it can't be measured in Tap mode. "
+                        "Use Whole click mode for it.";
+                }
+                return;
+            }
             if (m_currentIsRecheck) {
                 if (success != m_expectedRecheck) t.inconsistent = true;
             } else if (t.side == Side::Early) {
@@ -429,6 +441,13 @@ bool MeasurementEngine::planNextTrial() {
         if (t.skip) {
             m_current++;
             continue;
+        }
+        if (m_cfg.tap && !t.zeroDone) {
+            // First check that a tap on the original tick survives at all.
+            m_currentIsRecheck = false;
+            m_currentIsZero = true;
+            startTrial(0);
+            return true;
         }
         bool early = t.side == Side::Early;
         bool failed = early ? t.earlyFailed : t.lateFailed;
@@ -472,7 +491,19 @@ void MeasurementEngine::startTrial(int shift) {
     auto events = m_events;
     int64_t moved = static_cast<int64_t>(t.frame) + shift;
     events[t.eventIndex].frame = static_cast<uint64_t>(std::max<int64_t>(0, moved));
-    if (t.pairIndex) {
+    bool tapThis = m_cfg.tap && m_events[t.eventIndex].down;
+    if (tapThis) {
+        // Frame-step style: an instant tap, released tapTicks later, instead of the recorded hold.
+        uint64_t release = static_cast<uint64_t>(std::max<int64_t>(0, moved)) + static_cast<uint64_t>(std::max(1, m_cfg.tapTicks));
+        if (t.pairIndex) {
+            events[*t.pairIndex].frame = release;
+        } else {
+            auto rel = m_events[t.eventIndex];
+            rel.down = false;
+            rel.frame = release;
+            events.push_back(rel);
+        }
+    } else if (t.pairIndex) {
         int64_t release = static_cast<int64_t>(m_events[*t.pairIndex].frame) + shift;
         events[*t.pairIndex].frame = static_cast<uint64_t>(std::max<int64_t>(0, release));
     }
@@ -528,7 +559,8 @@ void MeasurementEngine::finalize(bool cancelled, std::string const& reason) {
         } else {
             w.status = WindowStatus::Verified;
             w.note = std::string("Measured by replaying the level with this ") +
-                (t.pairIndex ? "whole click (press and its release together)" : "input") +
+                (m_cfg.tap ? std::to_string(std::max(1, m_cfg.tapTicks)) + "-tick tap" :
+                 t.pairIndex ? "whole click (press and its release together)" : "input") +
                 " moved; survival horizon " + num(m_cfg.horizonTicks / 240.0, 2) + " s.";
             verified++;
         }
@@ -541,7 +573,7 @@ void MeasurementEngine::finalize(bool cancelled, std::string const& reason) {
     meas.horizonSeconds = m_cfg.horizonTicks / 240.0;
     meas.maxShiftTicks = m_cfg.maxShift;
     meas.recheckBorders = m_cfg.recheck;
-    meas.shiftMode = m_cfg.wholeClick ? "whole-click" : "press-only";
+    meas.shiftMode = m_cfg.tap ? "tap-" + std::to_string(std::max(1, m_cfg.tapTicks)) : m_cfg.wholeClick ? "whole-click" : "press-only";
     if (m_layer && m_layer->m_level) {
         meas.levelName = m_layer->m_level->m_levelName;
         meas.levelId = m_layer->m_level->m_levelID.value();

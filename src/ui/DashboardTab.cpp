@@ -200,7 +200,8 @@ public:
             md += "- **Level:** " + a.measurement.levelName + " (ID " + std::to_string(a.measurement.levelId) + ")\n";
             md += "- **Max shift:** " + std::to_string(a.measurement.maxShiftTicks) + " ticks, **horizon:** " +
                 num(a.measurement.horizonSeconds, 2) + " s, **edge recheck:** " + (a.measurement.recheckBorders ? "on" : "off") + "\n";
-            md += "- **Shift mode:** " + std::string(a.measurement.shiftMode == "press-only" ? "press only (release not moved)" :
+            md += "- **Shift mode:** " + std::string(a.measurement.shiftMode.rfind("tap", 0) == 0 ? a.measurement.shiftMode + " (tap of that many ticks)" :
+                a.measurement.shiftMode == "press-only" ? "press only (release not moved)" :
                 a.measurement.shiftMode.empty() ? "-" : "whole click (press + release)") + "\n";
             md += "- **Determinism check:** " + std::string(!a.measurement.determinismChecked ? "not run" :
                 a.measurement.determinismPassed ? "passed" : "FAILED") + "\n";
