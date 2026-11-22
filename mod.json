@@ -7,7 +7,7 @@
 	},
 	"id": "alexl.click-corrector",
 	"name": "Click Corrector",
-	"version": "v1.1.0",
+	"version": "v1.2.0",
 	"developer": "alexl",
 	"description": "Click a few frames early and the mod holds the click back until the right frame.",
 	"tags": [
@@ -61,6 +61,25 @@
 			"name": "Show Counter",
 			"description": "Show a small counter in the corner with how many clicks were corrected this attempt.",
 			"default": true
+		},
+		"show-bar": {
+			"type": "bool",
+			"name": "Show Click Range Bar",
+			"description": "Show a bar at the bottom of the screen. Your upcoming clicks scroll towards the white line as <cg>green</c> ranges: while the line is inside a green range, a click is corrected to the right frame (the bright right edge of the range). Blue ranges underneath are for letting go.",
+			"default": true
+		},
+		"bar-frames": {
+			"type": "int",
+			"name": "Bar Look-Ahead (frames)",
+			"description": "How far into the future the click range bar shows, in frames (1/240 s). <cy>120</c> is half a second. Smaller values make the ranges wider and faster.",
+			"default": 120,
+			"min": 30,
+			"max": 480,
+			"control": {
+				"slider": true,
+				"input": true,
+				"arrows": true
+			}
 		}
 	}
 }

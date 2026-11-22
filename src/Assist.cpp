@@ -59,6 +59,8 @@ void Assist::reloadSettings() {
     m_learn = mod->getSettingValue<bool>("learn");
     m_safeMode = mod->getSettingValue<bool>("safe-mode");
     m_showHud = mod->getSettingValue<bool>("show-hud");
+    m_showBar = mod->getSettingValue<bool>("show-bar");
+    m_barFrames = static_cast<int>(std::clamp<int64_t>(mod->getSettingValue<int64_t>("bar-frames"), 30, 480));
     updateHud();
 }
 

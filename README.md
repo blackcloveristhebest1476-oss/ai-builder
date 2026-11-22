@@ -21,6 +21,16 @@ There is no macro import. The only timings the mod knows are ones you made yours
 3. Play. The counter in the top-left corner shows how many clicks were corrected this attempt.
 4. Pause → **CC** to switch it on or off, change Frames Early, or delete your saved run of the level.
 
+## The click range bar
+
+A bar at the bottom of the screen shows when a click will be corrected.
+
+- The **white line** on the left is now. Your upcoming clicks scroll towards it from the right.
+- Each click is a **green range**. Its bright right edge is the right frame; the range is as long as your Frames Early setting.
+- While the line is inside a green range it turns green and **CLICK** appears: a click now is moved to the right frame.
+- A range disappears as soon as one of your clicks is caught by it.
+- The thin **blue ranges** along the bottom are the same thing for letting go (only with Correct Releases Too).
+
 ## Settings
 
 | Setting | Default | What it does |
@@ -31,6 +41,8 @@ There is no macro import. The only timings the mod knows are ones you made yours
 | Learn From My Completions | on | Every completion from the start replaces your saved run of the level. Turn off to keep the one saved now. |
 | Safe Mode | on | An attempt with at least one corrected click does not save a new best or a completion. |
 | Show Counter | on | The small counter in the corner. |
+| Show Click Range Bar | on | The bar at the bottom of the screen. |
+| Bar Look-Ahead | 120 | How many frames into the future the bar shows (120 = half a second). |
 
 ## Good to know
 

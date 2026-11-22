@@ -56,6 +56,15 @@ public:
     int window() const { return m_window; }
     bool enabled() const { return m_enabled; }
 
+    // ---- used by the click range bar --------------------------------------
+    /// Correcting is possible right now (switched on, supported level, a saved run exists).
+    bool active() const { return m_enabled && usable() && !m_ref.empty(); }
+    std::vector<fwa::MacroInput> const& reference() const { return m_ref; }
+    bool used(size_t index) const { return index < m_used.size() && m_used[index]; }
+    bool correctReleases() const { return m_correctReleases; }
+    bool showBar() const { return m_showBar; }
+    int barFrames() const { return m_barFrames; }
+
     void deleteReference();
     void reloadSettings();
 
@@ -99,6 +108,8 @@ private:
     bool m_learn = true;
     bool m_safeMode = true;
     bool m_showHud = true;
+    bool m_showBar = true;
+    int m_barFrames = 120;
 };
 
 } // namespace cc

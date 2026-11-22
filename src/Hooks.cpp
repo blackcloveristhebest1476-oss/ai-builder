@@ -1,6 +1,7 @@
 // Game hooks. Every hook is a pass-through unless the engine is attached to that layer.
 
 #include "Assist.hpp"
+#include "RangeBar.hpp"
 
 #include <Geode/binding/CheckpointObject.hpp>
 #include <Geode/binding/GJGameLevel.hpp>
@@ -40,6 +41,7 @@ class $modify(CorrectorPlayLayer, PlayLayer) {
         Assist::get().detach(Assist::get().layer());
         if (!PlayLayer::init(level, useReplay, dontCreateObjects)) return false;
         Assist::get().attach(this);
+        cc::RangeBar::addTo(this);
         return true;
     }
 
