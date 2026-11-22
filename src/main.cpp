@@ -8,7 +8,7 @@
 #include <Geode/ui/GeodeUI.hpp>
 #include <Geode/ui/Notification.hpp>
 #include <Geode/ui/Popup.hpp>
-#include <Geode/ui/SimpleTextArea.hpp>
+#include <Geode/ui/TextArea.hpp>
 #include <Geode/utils/async.hpp>
 #include <Geode/utils/file.hpp>
 
