@@ -1,76 +1,53 @@
-# AI Builder — Geometry Dash mod
+# Click Corrector — Geometry Dash (Geode) mod
 
-Select a structure in the editor, press the **AI** button, describe a design, and AI builds it.
+Click a little too early and the mod holds your click back and sends it on the right frame.
 
-- **Nothing selected** → builds a brand-new design near your camera (on the ground if you're looking at the floor).
-- **Something selected** → uses it as a reference/anchor. Either **add** to it ("add chains hanging under this platform") or tick **Replace selection** to redesign it ("make this a neon outline version").
-- The whole build is one undo step (**Ctrl+Z**). New objects come out selected, so you can move/scale them right away.
-- It can set color channels for pixel art (turn off in settings).
+You choose **Frames Early** (default 10). A click that comes **1 to 10 frames before** the right moment is moved to that moment. A click that is 11 or more frames early, on time, or late is left exactly as you made it.
 
-Requires **Geode v5.11+** on **Geometry Dash 2.2081**. GD 2.209 is not supported until Geode fully supports it.
+Requires **Geode v5.11+** on **Geometry Dash 2.2081** (Windows, macOS, Android).
 
-## 1. Get an API key
+## How it knows the right moment
 
-The mod calls an AI model over the internet, so you need a key from a provider:
+The mod cannot predict the future, so every level needs a **reference run**: the clicks of one run that beats the level. There are two ways to get one.
 
-| Provider setting | Where to get a key | Model examples |
-|---|---|---|
-| Anthropic (Claude) — default | console.anthropic.com → API Keys | `claude-sonnet-5-5` (best balance), `claude-opus-5-5`, `claude-haiku-5-5` (cheapest) |
-| OpenAI-compatible | platform.openai.com, openrouter.ai, etc. | whatever that service offers |
-| OpenAI-compatible + Ollama (free, local) | no key — run Ollama on your PC | Base URL `http://localhost:11434/v1` |
+| Way | What to do |
+|---|---|
+| **Beat the level once** | Any completion from the start counts, including **practice mode with checkpoints**. The mod saves the clicks of that run automatically. |
+| **Import a macro** | Pause → **CC** button → **Import Macro**. Reads `.gdr2` and `.gdr` (JSON or MessagePack) replays recorded at the normal 240 TPS. |
 
-API usage is billed by the provider. A typical build is a few cents.
+After that, each of your presses is compared with the next unused press in the reference run. If yours is 1..N frames early, it is sent on the reference frame instead.
 
-## 2. Build the mod
+## Using it
 
-### Option A — GitHub Actions (no tools to install)
-1. Create a new GitHub repository and upload this whole folder. Move `build-workflow.yml` to `.github/workflows/build.yml` (on GitHub: *Add file → Create new file*, name it `.github/workflows/build.yml`, and paste the contents in).
-2. Open the **Actions** tab; the "Build Geode Mod" workflow runs automatically.
-3. When it finishes, download **Build Output** and unzip it. Inside is `alexl.ai-builder.geode`.
-
-### Option B — Build on your PC (Windows)
-1. Install **Visual Studio 2022 Build Tools** with "Desktop development with C++" (include *C++ Clang tools for Windows*), plus **CMake** and **Git**.
-2. Install the Geode CLI: `winget install GeodeSDK.GeodeCLI` (or download from github.com/geode-sdk/cli/releases).
-3. In a terminal:
-   ```
-   geode config setup
-   geode sdk install
-   geode sdk install-binaries
-   cd path\to\ai-builder
-   geode build
-   ```
-   `geode build` puts the `.geode` file straight into your GD mods folder if `config setup` found your GD install.
-
-## 3. Install & use
-1. Copy `alexl.ai-builder.geode` into `Geometry Dash/geode/mods/` (skip if `geode build` already did) and restart GD.
-2. Geode menu → **AI Builder** → settings (gear) → paste your **API Key**.
-3. Open a level in the editor. The **AI** button sits next to undo/redo at the top-left.
-4. Select something (or nothing), press **AI**, type a description, hit **Generate**.
-
-Example prompts (the **Example** button cycles through these):
-- `a medieval castle with two towers, battlements and a gate`
-- `pixel art of a red mushroom with white spots, 16x16`
-- `a short fair cube section with spikes, a jump pad and an orb`
-- `turn this into a glowing neon version with outline blocks` (with Replace on)
+1. Install the `.geode` file (Geode → mods folder) and restart the game.
+2. Open a level, get a reference run (see above).
+3. Play. The counter in the top-left corner shows how many clicks were corrected this attempt.
+4. Pause → **CC** to switch it on or off, change Frames Early, import a macro or delete the level's reference.
 
 ## Settings
-| Setting | What it does |
-|---|---|
-| AI Provider | Anthropic, or any OpenAI-compatible API |
-| API Key / Model / Base URL | Connection details |
-| Max Objects Per Build | Safety cap (default 600) |
-| Max Output Tokens | Raise for huge builds (~12 tokens per object) |
-| Apply Color Channels | Lets the AI set channel colors (uses channels 50+ to avoid yours) |
-| Only Known Object IDs | Restricts the AI to a verified palette + IDs in your selection, so it never places garbage objects |
 
-## Troubleshooting
-- **"HTTP 401"** — wrong API key. **"HTTP 404 / model not found"** — check the Model name.
-- **"cut off or malformed"** — the design was too big for the token limit; raise *Max Output Tokens* or ask for something smaller.
-- Logs: enable the Geode console (Geode settings) to see the exact prompt and the AI's raw reply.
+| Setting | Default | What it does |
+|---|---|---|
+| Correct My Clicks | on | Master switch. |
+| Frames Early | 10 | How early a click may be and still be corrected (1–120). |
+| Correct Releases Too | on | Also holds back letting go of the button when you release early (ship, wave, robot). |
+| Learn From My Completions | on | Every completion from the start replaces the level's reference. Turn off to keep an imported macro. |
+| Safe Mode | on | An attempt with at least one corrected click does not save a new best or a completion. |
+| Show Counter | on | The small counter in the corner. |
 
-## Files
-- `src/main.cpp` — adds the AI button to the editor
-- `src/AIBuilderPopup.*` — the popup UI
-- `src/AIClient.*` — prompt building, API calls, response parsing
-- `src/Builder.*` — reads your selection and places the generated objects
-- `src/Palette.hpp` — the object IDs the AI may use (cross-checked against the object catalog from the MIT-licensed EditorAI mod by entity12208)
+## Good to know
+
+- **A frame is one physics tick, 1/240 s.** 10 frames is about 42 ms. This is the same unit macro bots use; it is not your monitor's frame rate.
+- **Late clicks are never corrected.** By the time you click, the right frame has already passed.
+- **A corrected click is delayed.** Clicking 10 frames early means your jump happens 10 frames after you pressed, which is the point.
+- **Corrected runs are assisted runs.** Safe Mode is on by default so they do not count as real completions. Do not submit them to leaderboards or lists.
+- A reference made in practice mode can be slightly off, because GD's checkpoints do not always restore the exact same state. A normal-mode completion or a macro is more reliable.
+- Not supported: platformer levels and start positions (the reference counts frames from the start of the level).
+- Levels with random triggers play differently every attempt, so a reference run does not fit them.
+- Click Between Frames / Click Between Steps give clicks sub-frame timing; corrected clicks land on whole frames.
+
+Reference runs are stored as standard `.gdr2` files in the mod's save folder under `references/`.
+
+## Building
+
+Push to GitHub: the **Build Geode Mod** workflow builds every platform. On `main` it also publishes a release with the `.geode` file. To build locally, install the Geode CLI and SDK, then `geode build`.

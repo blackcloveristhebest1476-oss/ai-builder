@@ -55,8 +55,9 @@ jobs:
           path: ${{ steps.build.outputs.build-output }}
 
       - name: Publish release
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: AI Builder build ${{ github.run_number }}
+          name: Click Corrector build ${{ github.run_number }}
           files: ${{ steps.build.outputs.build-output }}/*.geode

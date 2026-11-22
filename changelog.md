@@ -1,5 +1,2 @@
-# v1.0.1
-- Fixed: API Key, Model and Base URL settings now accept symbols like : / . - (needed for URLs, keys and OpenRouter model names).
-
 # v1.0.0
-- Initial release: AI button in the editor, add/replace modes, color channels, Anthropic + OpenAI-compatible providers.
+- Initial release: early clicks and releases are moved to the frame of the level's reference run, with an adjustable Frames Early window, automatic reference from your completions, macro import, Safe Mode and a counter.
