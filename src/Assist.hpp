@@ -2,8 +2,7 @@
 
 // Click Corrector engine.
 //
-// Every level can have a "reference": the clicks of a run that beats it (your
-// own completion, or an imported macro). While you play, a press or release
+// Every level can have a "reference": the clicks of your own run that beat it. While you play, a press or release
 // that comes 1..N ticks before the matching reference event is swallowed and
 // sent again on the reference tick. Anything else passes through untouched.
 //
@@ -57,8 +56,6 @@ public:
     int window() const { return m_window; }
     bool enabled() const { return m_enabled; }
 
-    /// Reads a macro file and makes it this level's reference. Returns an error text on failure.
-    std::optional<std::string> importFile(std::filesystem::path const& path, std::string* note);
     void deleteReference();
     void reloadSettings();
 

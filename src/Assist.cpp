@@ -298,6 +298,8 @@ void Assist::loadReference() {
         return;
     }
     auto macro = std::move(parsed).value();
+    // Only your own runs are used; a reference imported by an older version is ignored.
+    if (macro.meta.description.starts_with("imported macro")) return;
     setReference(std::move(macro.inputs), macro.meta.description.empty() ? "a saved run" : macro.meta.description);
     log::info("Loaded reference for {}: {} inputs", m_levelKey, m_ref.size());
 }
@@ -329,48 +331,6 @@ bool Assist::saveReference(std::vector<MacroInput> inputs, std::string const& so
         return false;
     }
     return true;
-}
-
-std::optional<std::string> Assist::importFile(std::filesystem::path const& path, std::string* note) {
-    if (!m_layer) return "Open the level first, then import the macro from the pause menu.";
-    if (!m_unsupported.empty()) return m_unsupported;
-    auto data = file::readBinary(path);
-    if (!data) return "Could not read the file: " + std::string(data.unwrapErr());
-    auto bytes = std::move(data).unwrap();
-    auto fileName = utils::string::pathToString(path.filename());
-
-    auto res = fwa::FormatRegistry::get().importData(std::span<uint8_t const>(bytes.data(), bytes.size()), fileName);
-    if (!res) return res.error();
-    auto imported = std::move(res).value();
-    if (imported.kind != fwa::ImportKind::Macro || !imported.macro) {
-        return "That file does not contain a macro (a list of clicks). Use a .gdr2 or .gdr replay.";
-    }
-    auto macro = std::move(*imported.macro);
-    if (!fwa::validateMacro(macro) || macro.inputs.empty()) {
-        std::string why = "The macro has no usable inputs.";
-        for (auto const& d : macro.diagnostics) {
-            if (d.severity == fwa::Severity::Error) {
-                why = d.message;
-                break;
-            }
-        }
-        return why;
-    }
-    if (std::abs(macro.meta.framerate - 240.0) > 0.01) {
-        return fmt::format("This macro was recorded at {} ticks per second. Only normal 240 TPS macros (no physics "
-                           "bypass) can be used.", macro.meta.framerate);
-    }
-    std::string source = "imported macro " + fileName;
-    if (!saveReference(macro.inputs, source)) return "Could not save the reference in the mod's save folder.";
-    setReference(std::move(macro.inputs), source);
-    if (note) {
-        int levelId = m_layer->m_level ? static_cast<int>(m_layer->m_level->m_levelID.value()) : 0;
-        if (macro.meta.levelId != 0 && levelId > 0 && static_cast<int>(macro.meta.levelId) != levelId) {
-            *note = fmt::format("The macro says it is for level ID {}, this level is {}.", macro.meta.levelId, levelId);
-        }
-    }
-    updateHud();
-    return std::nullopt;
 }
 
 void Assist::deleteReference() {

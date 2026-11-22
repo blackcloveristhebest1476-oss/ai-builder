@@ -7,7 +7,7 @@
 	},
 	"id": "alexl.click-corrector",
 	"name": "Click Corrector",
-	"version": "v1.0.0",
+	"version": "v1.1.0",
 	"developer": "alexl",
 	"description": "Click a few frames early and the mod holds the click back until the right frame.",
 	"tags": [
@@ -22,7 +22,7 @@
 		"enabled": {
 			"type": "bool",
 			"name": "Correct My Clicks",
-			"description": "Master switch. When on, a click that comes a little <cy>early</c> is held back and sent on the frame of the matching click in the level's reference run.",
+			"description": "Master switch. When on, a click that comes a little <cy>early</c> is held back and sent on the frame where you made that click in your own saved run of the level.",
 			"default": true
 		},
 		"frames-early": {
@@ -47,7 +47,7 @@
 		"learn": {
 			"type": "bool",
 			"name": "Learn From My Completions",
-			"description": "Whenever you beat a level from the start (normal mode, or practice mode with checkpoints), save the clicks of that run as the level's reference. Turn off to keep a macro you imported.",
+			"description": "Whenever you beat a level from the start (normal mode, or practice mode with checkpoints), save your clicks from that run as the timings to correct towards. Turn off to keep the run that is saved now.",
 			"default": true
 		},
 		"safe-mode": {

@@ -9,8 +9,6 @@
 #include <Geode/ui/Notification.hpp>
 #include <Geode/ui/Popup.hpp>
 #include <Geode/ui/TextArea.hpp>
-#include <Geode/utils/async.hpp>
-#include <Geode/utils/file.hpp>
 
 using namespace geode::prelude;
 using cc::Assist;
@@ -90,16 +88,13 @@ protected:
         m_mainLayer->addChild(m_framesMs);
 
         // Bottom row
-        auto import = textButton("Import Macro", "GJ_button_01.png", .55f, [this] { onImport(); });
-        import->setPosition({75.f, 28.f});
-        menu->addChild(import);
-        auto remove = textButton("Delete", "GJ_button_06.png", .55f, [this] { onDelete(); });
-        remove->setPosition({176.f, 28.f});
+        auto remove = textButton("Delete My Run", "GJ_button_06.png", .55f, [this] { onDelete(); });
+        remove->setPosition({105.f, 28.f});
         menu->addChild(remove);
         auto settings = textButton("Settings", "GJ_button_04.png", .55f, [] {
             geode::openSettingsPopup(Mod::get());
         });
-        settings->setPosition({262.f, 28.f});
+        settings->setPosition({240.f, 28.f});
         menu->addChild(settings);
 
         refresh();
@@ -126,10 +121,11 @@ protected:
         } else if (!assist.unsupported().empty()) {
             text = assist.unsupported();
         } else if (!assist.hasReference()) {
-            text = "No reference run for this level yet, so nothing can be corrected.\n"
-                   "Beat the level once (practice mode with checkpoints counts) or import a macro of it.";
+            text = "You have not beaten this level with the mod installed yet, so it does not know your "
+                   "click timings.\nBeat it once (practice mode with checkpoints counts) and it will correct "
+                   "your clicks from then on.";
         } else {
-            text = fmt::format("Reference: {} clicks, from {}.\n", assist.referenceClicks(), assist.referenceSource());
+            text = fmt::format("Using {} clicks from {}.\n", assist.referenceClicks(), assist.referenceSource());
             text += assist.enabled()
                 ? fmt::format("A click 1 to {} frames early is moved to the right frame. Corrected this attempt: {}.",
                       frames, assist.corrected())
@@ -142,37 +138,10 @@ protected:
         m_mainLayer->addChild(m_status);
     }
 
-    void onImport() {
-        if (!Assist::get().layer()) {
-            FLAlertLayer::create("Import", "Open the level first.", "OK")->show();
-            return;
-        }
-        file::FilePickOptions opts;
-        opts.filters.push_back({"Macros", {"*.gdr2", "*.gdr", "*.json"}});
-        opts.filters.push_back({"All files", {"*.*"}});
-        m_pick.spawn(file::pick(file::PickMode::OpenFile, opts), [this](file::PickResult res) {
-            if (!res) {
-                FLAlertLayer::create("Import", "The file picker failed: " + std::string(res.unwrapErr()), "OK")->show();
-                return;
-            }
-            auto picked = std::move(res).unwrap();
-            if (!picked) return; // cancelled
-            std::string note;
-            if (auto err = Assist::get().importFile(*picked, &note)) {
-                FLAlertLayer::create("Could not import", *err, "OK")->show();
-                return;
-            }
-            Notification::create("Macro imported as this level's reference", NotificationIcon::Success)->show();
-            if (!note.empty()) FLAlertLayer::create("Check the level", note + " It is used anyway.", "OK")->show();
-            refresh();
-        });
-    }
-
     void onDelete() {
         if (!Assist::get().hasReference()) return;
-        geode::createQuickPopup("Delete reference",
-            "Delete this level's reference run? Clicks cannot be corrected here until you beat the level again "
-            "or import a macro.",
+        geode::createQuickPopup("Delete my run",
+            "Forget your saved run of this level? Clicks cannot be corrected here until you beat the level again.",
             "Cancel", "Delete", [this](FLAlertLayer*, bool second) {
                 if (!second) return;
                 Assist::get().deleteReference();
@@ -183,7 +152,6 @@ protected:
     CCLabelBMFont* m_frames = nullptr;
     CCLabelBMFont* m_framesMs = nullptr;
     SimpleTextArea* m_status = nullptr;
-    async::TaskHolder<file::PickResult> m_pick;
 };
 
 } // namespace

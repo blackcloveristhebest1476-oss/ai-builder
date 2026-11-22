@@ -8,21 +8,18 @@ Requires **Geode v5.11+** on **Geometry Dash 2.2081** (Windows, macOS, Android).
 
 ## How it knows the right moment
 
-The mod cannot predict the future, so every level needs a **reference run**: the clicks of one run that beats the level. There are two ways to get one.
+The mod uses **your own clicks**. The first time you beat a level with the mod installed, it saves the frame of every press and release from that run. Any completion from the start counts, including **practice mode with checkpoints**.
 
-| Way | What to do |
-|---|---|
-| **Beat the level once** | Any completion from the start counts, including **practice mode with checkpoints**. The mod saves the clicks of that run automatically. |
-| **Import a macro** | Pause → **CC** button → **Import Macro**. Reads `.gdr2` and `.gdr` (JSON or MessagePack) replays recorded at the normal 240 TPS. |
+From then on, each of your presses is compared with the next unused press of that saved run. If yours is 1..N frames early, it is sent on the saved frame instead. Nothing is ever clicked for you: if you do not click, nothing happens.
 
-After that, each of your presses is compared with the next unused press in the reference run. If yours is 1..N frames early, it is sent on the reference frame instead.
+There is no macro import. The only timings the mod knows are ones you made yourself.
 
 ## Using it
 
 1. Install the `.geode` file (Geode → mods folder) and restart the game.
-2. Open a level, get a reference run (see above).
+2. Open a level and beat it once (practice mode is fine).
 3. Play. The counter in the top-left corner shows how many clicks were corrected this attempt.
-4. Pause → **CC** to switch it on or off, change Frames Early, import a macro or delete the level's reference.
+4. Pause → **CC** to switch it on or off, change Frames Early, or delete your saved run of the level.
 
 ## Settings
 
@@ -31,7 +28,7 @@ After that, each of your presses is compared with the next unused press in the r
 | Correct My Clicks | on | Master switch. |
 | Frames Early | 10 | How early a click may be and still be corrected (1–120). |
 | Correct Releases Too | on | Also holds back letting go of the button when you release early (ship, wave, robot). |
-| Learn From My Completions | on | Every completion from the start replaces the level's reference. Turn off to keep an imported macro. |
+| Learn From My Completions | on | Every completion from the start replaces your saved run of the level. Turn off to keep the one saved now. |
 | Safe Mode | on | An attempt with at least one corrected click does not save a new best or a completion. |
 | Show Counter | on | The small counter in the corner. |
 
@@ -41,12 +38,12 @@ After that, each of your presses is compared with the next unused press in the r
 - **Late clicks are never corrected.** By the time you click, the right frame has already passed.
 - **A corrected click is delayed.** Clicking 10 frames early means your jump happens 10 frames after you pressed, which is the point.
 - **Corrected runs are assisted runs.** Safe Mode is on by default so they do not count as real completions. Do not submit them to leaderboards or lists.
-- A reference made in practice mode can be slightly off, because GD's checkpoints do not always restore the exact same state. A normal-mode completion or a macro is more reliable.
-- Not supported: platformer levels and start positions (the reference counts frames from the start of the level).
-- Levels with random triggers play differently every attempt, so a reference run does not fit them.
+- A run saved in practice mode can be slightly off, because GD's checkpoints do not always restore the exact same state. A normal-mode completion is more reliable.
+- Not supported: platformer levels and start positions (your saved run counts frames from the start of the level).
+- Levels with random triggers play differently every attempt, so a saved run does not fit them.
 - Click Between Frames / Click Between Steps give clicks sub-frame timing; corrected clicks land on whole frames.
 
-Reference runs are stored as standard `.gdr2` files in the mod's save folder under `references/`.
+Your saved runs are stored in the mod's save folder under `references/`, one file per level.
 
 ## Building
 
