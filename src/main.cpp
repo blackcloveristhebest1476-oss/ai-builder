@@ -1,183 +1,33 @@
-// Click Corrector - pause-menu button and the small control popup.
-
-#include "Assist.hpp"
-
 #include <Geode/Geode.hpp>
-#include <Geode/binding/ButtonSprite.hpp>
-#include <Geode/modify/PauseLayer.hpp>
-#include <Geode/ui/GeodeUI.hpp>
-#include <Geode/ui/Notification.hpp>
-#include <Geode/ui/Popup.hpp>
-#include <Geode/ui/TextArea.hpp>
+#include <Geode/modify/MenuLayer.hpp>
+#include <Geode/ui/BasedButtonSprite.hpp>
+
+#include "PickerPopup.hpp"
 
 using namespace geode::prelude;
-using cc::Assist;
 
-namespace {
-
-constexpr float kWidth = 330.f;
-constexpr float kHeight = 230.f;
-
-CCMenuItemSpriteExtra* textButton(char const* text, char const* bg, float scale,
-                                  std::function<void()> callback) {
-    auto spr = ButtonSprite::create(text, "bigFont.fnt", bg, .8f);
-    spr->setScale(scale);
-    return CCMenuItemExt::createSpriteExtra(spr, [cb = std::move(callback)](CCMenuItemSpriteExtra*) {
-        if (cb) cb();
-    });
-}
-
-class CorrectorPopup : public Popup {
-public:
-    static CorrectorPopup* create() {
-        auto ret = new CorrectorPopup();
-        if (ret->init()) {
-            ret->autorelease();
-            return ret;
-        }
-        delete ret;
-        return nullptr;
-    }
-
-protected:
+class $modify(PickerMenuLayer, MenuLayer) {
     bool init() {
-        if (!Popup::init(kWidth, kHeight)) return false;
-        this->setTitle("Click Corrector");
+        if (!MenuLayer::init()) return false;
 
-        auto menu = CCMenu::create();
-        menu->setPosition({0.f, 0.f});
-        m_mainLayer->addChild(menu, 2);
-
-        // On / off
-        auto toggler = CCMenuItemExt::createTogglerWithStandardSprites(.7f, [this](CCMenuItemToggler* item) {
-            // GD calls the handler before flipping the state.
-            Mod::get()->setSettingValue<bool>("enabled", !item->isToggled());
-            Assist::get().reloadSettings();
-            refresh();
-        });
-        toggler->toggle(Mod::get()->getSettingValue<bool>("enabled"));
-        toggler->setPosition({38.f, 96.f});
-        menu->addChild(toggler);
-        auto onLabel = CCLabelBMFont::create("Correct my clicks", "bigFont.fnt");
-        onLabel->setScale(.4f);
-        onLabel->setAnchorPoint({0.f, .5f});
-        onLabel->setPosition({56.f, 96.f});
-        m_mainLayer->addChild(onLabel);
-
-        // Frames early:  [-]  10  [+]
-        auto framesCaption = CCLabelBMFont::create("Frames early", "bigFont.fnt");
-        framesCaption->setScale(.4f);
-        framesCaption->setAnchorPoint({0.f, .5f});
-        framesCaption->setPosition({24.f, 64.f});
-        m_mainLayer->addChild(framesCaption);
-
-        auto minus = textButton("-", "GJ_button_04.png", .7f, [this] { changeFrames(-1); });
-        minus->setPosition({160.f, 64.f});
-        menu->addChild(minus);
-        auto plus = textButton("+", "GJ_button_04.png", .7f, [this] { changeFrames(1); });
-        plus->setPosition({250.f, 64.f});
-        menu->addChild(plus);
-        m_frames = CCLabelBMFont::create("", "goldFont.fnt");
-        m_frames->setScale(.7f);
-        m_frames->setPosition({205.f, 65.f});
-        m_mainLayer->addChild(m_frames);
-        m_framesMs = CCLabelBMFont::create("", "chatFont.fnt");
-        m_framesMs->setScale(.6f);
-        m_framesMs->setAnchorPoint({0.f, .5f});
-        m_framesMs->setPosition({268.f, 64.f});
-        m_mainLayer->addChild(m_framesMs);
-
-        // Bottom row
-        auto remove = textButton("Delete My Run", "GJ_button_06.png", .55f, [this] { onDelete(); });
-        remove->setPosition({105.f, 28.f});
-        menu->addChild(remove);
-        auto settings = textButton("Settings", "GJ_button_04.png", .55f, [] {
-            geode::openSettingsPopup(Mod::get());
-        });
-        settings->setPosition({240.f, 28.f});
-        menu->addChild(settings);
-
-        refresh();
+        // Extreme demon face on a round button, in the row at the bottom of
+        // the main menu.
+        if (auto menu = this->getChildByID("bottom-menu")) {
+            auto sprite = CircleButtonSprite::createWithSpriteFrameName(
+                "diffIcon_10_btn_001.png", 1.f,
+                CircleBaseColor::Green, CircleBaseSize::MediumAlt
+            );
+            auto button = CCMenuItemSpriteExtra::create(
+                sprite, this, menu_selector(PickerMenuLayer::onExtremePicker)
+            );
+            button->setID("picker-button"_spr);
+            menu->addChild(button);
+            menu->updateLayout();
+        }
         return true;
     }
 
-    void changeFrames(int by) {
-        auto mod = Mod::get();
-        int64_t value = std::clamp<int64_t>(mod->getSettingValue<int64_t>("frames-early") + by, 1, 120);
-        mod->setSettingValue<int64_t>("frames-early", value);
-        Assist::get().reloadSettings();
-        refresh();
-    }
-
-    void refresh() {
-        auto& assist = Assist::get();
-        int64_t frames = Mod::get()->getSettingValue<int64_t>("frames-early");
-        m_frames->setString(std::to_string(frames).c_str());
-        m_framesMs->setString(fmt::format("{:.0f} ms", static_cast<double>(frames) * 1000.0 / 240.0).c_str());
-
-        std::string text;
-        if (!assist.layer()) {
-            text = "Open a level to use Click Corrector.";
-        } else if (!assist.unsupported().empty()) {
-            text = assist.unsupported();
-        } else if (!assist.hasReference()) {
-            text = "You have not beaten this level with the mod installed yet, so it does not know your "
-                   "click timings.\nBeat it once (practice mode with checkpoints counts) and it will correct "
-                   "your clicks from then on.";
-        } else {
-            text = fmt::format("Using {} clicks from {}.\n", assist.referenceClicks(), assist.referenceSource());
-            text += assist.enabled()
-                ? fmt::format("A click 1 to {} frames early is moved to the right frame. Corrected this attempt: {}.",
-                      frames, assist.corrected())
-                : std::string("Correction is switched off.");
-        }
-        if (m_status) m_status->removeFromParent();
-        m_status = SimpleTextArea::create(text, "chatFont.fnt", .7f, kWidth - 40.f);
-        m_status->setAnchorPoint({.5f, 1.f});
-        m_status->setPosition({kWidth / 2, kHeight - 38.f});
-        m_mainLayer->addChild(m_status);
-    }
-
-    void onDelete() {
-        if (!Assist::get().hasReference()) return;
-        geode::createQuickPopup("Delete my run",
-            "Forget your saved run of this level? Clicks cannot be corrected here until you beat the level again.",
-            "Cancel", "Delete", [this](FLAlertLayer*, bool second) {
-                if (!second) return;
-                Assist::get().deleteReference();
-                refresh();
-            });
-    }
-
-    CCLabelBMFont* m_frames = nullptr;
-    CCLabelBMFont* m_framesMs = nullptr;
-    SimpleTextArea* m_status = nullptr;
-};
-
-} // namespace
-
-class $modify(CorrectorPauseLayer, PauseLayer) {
-    void customSetup() {
-        PauseLayer::customSetup();
-
-        auto sprite = ButtonSprite::create("CC", "bigFont.fnt", "GJ_button_04.png", .7f);
-        sprite->setScale(.6f);
-        auto btn = CCMenuItemExt::createSpriteExtra(sprite, [](auto) {
-            if (auto popup = CorrectorPopup::create()) popup->show();
-        });
-        btn->setID("click-corrector-button"_spr);
-
-        // Prefer the right-side menu provided by the node-ids mod.
-        if (auto menu = this->getChildByID("right-button-menu")) {
-            menu->addChild(btn);
-            menu->updateLayout();
-        } else {
-            auto winSize = CCDirector::get()->getWinSize();
-            auto menu2 = CCMenu::create();
-            menu2->setID("click-corrector-menu"_spr);
-            menu2->setPosition({winSize.width - 30.f, winSize.height / 2});
-            menu2->addChild(btn);
-            this->addChild(menu2, 10);
-        }
+    void onExtremePicker(CCObject*) {
+        if (auto popup = PickerPopup::create()) popup->show();
     }
 };

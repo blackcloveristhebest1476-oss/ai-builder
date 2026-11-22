@@ -1,62 +1,40 @@
-# Click Corrector — Geometry Dash (Geode) mod
+# Extreme Picker (Geode mod)
 
-Click a little too early and the mod holds your click back and sends it on the right frame.
+Recommends your next Extreme Demon from the AREDL, based on the tags of the extremes you've already beaten. See [about.md](about.md) for what it does in game.
 
-You choose **Frames Early** (default 10). A click that comes **1 to 10 frames before** the right moment is moved to that moment. A click that is 11 or more frames early, on time, or late is left exactly as you made it.
+Targets Geode 5.11.2 / Geometry Dash 2.2081 (Windows, macOS, Android).
 
-Requires **Geode v5.11+** on **Geometry Dash 2.2081** (Windows, macOS, Android).
+## Build option 1: GitHub (no tools to install)
 
-## How it knows the right moment
+1. Open the **Actions** tab. The "Build Geode Mod" workflow runs on every push.
+2. When it finishes, download **Build Output** from the run page. Inside is the `.geode` file.
+3. Builds of the `main` branch are also published under **Releases**.
 
-The mod uses **your own clicks**. The first time you beat a level with the mod installed, it saves the frame of every press and release from that run. Any completion from the start counts, including **practice mode with checkpoints**.
+## Build option 2: on your PC
 
-From then on, each of your presses is compared with the next unused press of that saved run. If yours is 1..N frames early, it is sent on the saved frame instead. Nothing is ever clicked for you: if you do not click, nothing happens.
+Install the [Geode CLI and SDK](https://docs.geode-sdk.org/getting-started/), then in this folder:
 
-There is no macro import. The only timings the mod knows are ones you made yourself.
+```
+geode build
+```
 
-## Using it
+The CLI installs the mod into your game automatically.
 
-1. Install the `.geode` file (Geode → mods folder) and restart the game.
-2. Open a level and beat it once (practice mode is fine).
-3. Play. The counter in the top-left corner shows how many clicks were corrected this attempt.
-4. Pause → **CC** to switch it on or off, change Frames Early, or delete your saved run of the level.
+## Installing a built .geode file
 
-## The click range bar
+Put it in `Geometry Dash/geode/mods/` and restart the game.
 
-A bar at the bottom of the screen shows when a click will be corrected.
+## How picks are scored
 
-- The **white line** on the left is now. Your upcoming clicks scroll towards it from the right.
-- Each click is a **green range**. Its bright right edge is the right frame; the range is as long as your Frames Early setting.
-- While the line is inside a green range it turns green and **CLICK** appears: a click now is moved to the right frame.
-- A range disappears as soon as one of your clicks is caught by it.
-- The thin **blue ranges** along the bottom are the same thing for letting go (only with Correct Releases Too).
+- **Tag match**: cosine similarity between a level's tags and your average tag profile. Tags that are rare on the list count for more than tags nearly every level has. `NONG` and `2P` are ignored.
+- **Difficulty fit**: harder levels must be within "Max jump" places of your hardest, and smaller jumps score higher. Easier levels score higher the closer they are to your hardest.
+- **Enjoyment** (optional): up to a 15% boost from the list's enjoyment rating.
 
-## Settings
+Final score = match x fit x enjoyment. The logic lives in `src/Recommender.cpp` and has a standalone test in `tests/`.
 
-| Setting | Default | What it does |
-|---|---|---|
-| Correct My Clicks | on | Master switch. |
-| Frames Early | 10 | How early a click may be and still be corrected (1–120). |
-| Correct Releases Too | on | Also holds back letting go of the button when you release early (ship, wave, robot). |
-| Learn From My Completions | on | Every completion from the start replaces your saved run of the level. Turn off to keep the one saved now. |
-| Safe Mode | on | An attempt with at least one corrected click does not save a new best or a completion. |
-| Show Counter | on | The small counter in the corner. |
-| Show Click Range Bar | on | The bar at the bottom of the screen. |
-| Bar Look-Ahead | 120 | How many frames into the future the bar shows (120 = half a second). |
+## Files
 
-## Good to know
-
-- **A frame is one physics tick, 1/240 s.** 10 frames is about 42 ms. This is the same unit macro bots use; it is not your monitor's frame rate.
-- **Late clicks are never corrected.** By the time you click, the right frame has already passed.
-- **A corrected click is delayed.** Clicking 10 frames early means your jump happens 10 frames after you pressed, which is the point.
-- **Corrected runs are assisted runs.** Safe Mode is on by default so they do not count as real completions. Do not submit them to leaderboards or lists.
-- A run saved in practice mode can be slightly off, because GD's checkpoints do not always restore the exact same state. A normal-mode completion is more reliable.
-- Not supported: platformer levels and start positions (your saved run counts frames from the start of the level).
-- Levels with random triggers play differently every attempt, so a saved run does not fit them.
-- Click Between Frames / Click Between Steps give clicks sub-frame timing; corrected clicks land on whole frames.
-
-Your saved runs are stored in the mod's save folder under `references/`, one file per level.
-
-## Building
-
-Push to GitHub: the **Build Geode Mod** workflow builds every platform. On `main` it also publishes a release with the `.geode` file. To build locally, install the Geode CLI and SDK, then `geode build`.
+- `src/main.cpp`: adds the button to the main menu
+- `src/PickerPopup.cpp`: downloads the list, finds your completions, draws the popup
+- `src/Aredl.cpp`: parses the AREDL API response
+- `src/Recommender.cpp`: the scoring
