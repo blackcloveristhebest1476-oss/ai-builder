@@ -1,85 +1,71 @@
 {
-	"geode": "5.11.2",
-	"gd": {
-		"win": "2.2081",
-		"android": "2.2081",
-		"mac": "2.2081"
-	},
-	"id": "alexl.click-corrector",
-	"name": "Click Corrector",
-	"version": "v1.2.0",
-	"developer": "alexl",
-	"description": "Click a few frames early and the mod holds the click back until the right frame.",
-	"tags": [
-		"gameplay",
-		"utility",
-		"cheat"
-	],
-	"dependencies": {
-		"geode.node-ids": ">=v1.23.3"
-	},
-	"settings": {
-		"enabled": {
-			"type": "bool",
-			"name": "Correct My Clicks",
-			"description": "Master switch. When on, a click that comes a little <cy>early</c> is held back and sent on the frame where you made that click in your own saved run of the level.",
-			"default": true
-		},
-		"frames-early": {
-			"type": "int",
-			"name": "Frames Early",
-			"description": "How many frames <cy>before</c> the right moment a click may come and still be corrected. With <cg>10</c>, a click that is 1 to 10 frames early is moved to the right frame; a click 11 or more frames early is left alone.\n\nA frame here is one physics tick, <cy>1/240 s</c> (10 frames = about 42 ms). Late clicks can never be corrected.",
-			"default": 10,
-			"min": 1,
-			"max": 120,
-			"control": {
-				"slider": true,
-				"input": true,
-				"arrows": true
-			}
-		},
-		"correct-releases": {
-			"type": "bool",
-			"name": "Correct Releases Too",
-			"description": "Also hold back <cy>letting go</c> of the button when you release a little early. Matters for ship, wave, robot and other parts where the length of the hold counts.",
-			"default": true
-		},
-		"learn": {
-			"type": "bool",
-			"name": "Learn From My Completions",
-			"description": "Whenever you beat a level from the start (normal mode, or practice mode with checkpoints), save your clicks from that run as the timings to correct towards. Turn off to keep the run that is saved now.",
-			"default": true
-		},
-		"safe-mode": {
-			"type": "bool",
-			"name": "Safe Mode",
-			"description": "When at least one click was corrected in an attempt, that attempt does <cr>not</c> save a new best or a completion. Corrected runs are assisted runs: turn this off only for levels where that does not matter to anyone else.",
-			"default": true
-		},
-		"show-hud": {
-			"type": "bool",
-			"name": "Show Counter",
-			"description": "Show a small counter in the corner with how many clicks were corrected this attempt.",
-			"default": true
-		},
-		"show-bar": {
-			"type": "bool",
-			"name": "Show Click Range Bar",
-			"description": "Show a bar at the bottom of the screen. Your upcoming clicks scroll towards the white line as <cg>green</c> ranges: while the line is inside a green range, a click is corrected to the right frame (the bright right edge of the range). Blue ranges underneath are for letting go.",
-			"default": true
-		},
-		"bar-frames": {
-			"type": "int",
-			"name": "Bar Look-Ahead (frames)",
-			"description": "How far into the future the click range bar shows, in frames (1/240 s). <cy>120</c> is half a second. Smaller values make the ranges wider and faster.",
-			"default": 120,
-			"min": 30,
-			"max": 480,
-			"control": {
-				"slider": true,
-				"input": true,
-				"arrows": true
-			}
-		}
-	}
+    "geode": "5.11.2",
+    "gd": {
+        "win": "2.2081",
+        "android": "2.2081",
+        "mac": "2.2081"
+    },
+    "id": "alexl.extreme-picker",
+    "name": "Extreme Picker",
+    "version": "v1.0.0",
+    "developer": "alexl",
+    "description": "Picks your next Extreme Demon from the AREDL based on the ones you've beaten.",
+    "tags": ["online", "utility"],
+    "settings": {
+        "mode": {
+            "type": "string",
+            "name": "What to recommend",
+            "description": "<cy>Both</c>: new hardests and easier levels.\n<cr>New hardest only</c>: only levels above your current hardest.\n<cg>Easier levels only</c>: only levels below your current hardest.",
+            "default": "Both",
+            "one-of": ["Both", "New hardest only", "Easier levels only"]
+        },
+        "max-jump": {
+            "type": "int",
+            "name": "Max jump",
+            "description": "How many list places above your hardest a recommended level may be.",
+            "default": 100,
+            "min": 5,
+            "max": 1000,
+            "control": {
+                "slider": false,
+                "input": true,
+                "arrows": true,
+                "arrow-step": 5,
+                "big-arrows": true,
+                "big-arrow-step": 50
+            }
+        },
+        "pick-count": {
+            "type": "int",
+            "name": "Number of picks",
+            "description": "How many levels to show.",
+            "default": 15,
+            "min": 1,
+            "max": 50
+        },
+        "use-enjoyment": {
+            "type": "bool",
+            "name": "Prefer enjoyable levels",
+            "description": "Gives a small boost to levels with a high enjoyment rating on the list.",
+            "default": true
+        },
+        "include-legacy": {
+            "type": "bool",
+            "name": "Include legacy levels",
+            "description": "Also recommend levels from the legacy list.",
+            "default": false
+        },
+        "include-2p": {
+            "type": "bool",
+            "name": "Include 2-player levels",
+            "default": false
+        },
+        "extra-completed": {
+            "type": "string",
+            "name": "Extra beaten level IDs",
+            "description": "Level IDs you've beaten that this save file doesn't know about (another account, lost data), separated by commas.",
+            "default": "",
+            "filter": "0123456789, "
+        }
+    }
 }

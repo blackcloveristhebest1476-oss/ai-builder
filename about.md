@@ -1,11 +1,23 @@
-# Click Corrector
+# Extreme Picker
 
-Click a little too early and the mod holds your click back until the right frame.
+Picks your next Extreme Demon for you.
 
-- Choose **Frames Early** (default 10): a click 1 to 10 frames early is moved to the right frame. Anything else is left alone.
-- The right frame comes from **your own clicks**: beat the level once (practice mode with checkpoints counts) and the mod remembers when you clicked. No macros.
-- A **click range bar** at the bottom shows your upcoming clicks as green ranges: click while the line is inside one and the click is corrected.
-- Releases can be corrected too, for ship and wave parts.
-- **Safe Mode** (on by default): attempts with corrected clicks do not save a new best or a completion.
+Press the **extreme demon button** at the bottom of the main menu. The mod:
 
-A frame is one physics tick (1/240 s). Late clicks cannot be corrected. Platformer levels and start positions are not supported.
+1. Finds every level you have 100% on.
+2. Looks them up on the [All Rated Extreme Demons List](https://aredl.net) and reads their tags (Wave, Timings, Flow, Memory, 2.1, XL...).
+3. Builds your profile: how often each tag shows up in the extremes you've beaten.
+4. Scores every extreme you haven't beaten by how well its tags match that profile, and how far it is from your current hardest.
+
+Each pick shows its list position, how well it matches you, and the tags it shares with your completions. **View** opens the level, **Open All** opens every pick as a level list.
+
+No extremes beaten yet? You get the easiest, best-liked extremes on the list instead.
+
+## Settings
+
+- **What to recommend**: new hardests, easier levels, or both
+- **Max jump**: how far above your hardest a pick may be
+- **Prefer enjoyable levels**: small boost from the list's enjoyment ratings
+- **Extra beaten level IDs**: for completions your save file doesn't have
+
+Level data comes from the public AREDL API and is saved for 6 hours.
